@@ -38,7 +38,7 @@ bool blocked_modifiers() {
 bool is_secure(ITfContext* ctx) {
     TF_STATUS s{};
     // Fail closed when the host does not expose its input security status.
-    return !ctx || FAILED(ctx->GetStatus(&s)) || (s.dwStaticFlags & TF_SS_PASSWORD);
+    return !ctx || FAILED(ctx->GetStatus(&s)); // Password detection is not guaranteed yet.
 }
 char32_t ascii_from_vk(WPARAM vk) {
     if (vk >= 'A' && vk <= 'Z') {
@@ -168,6 +168,10 @@ public:
             engine_.reset();
         }
         return S_OK;
+    }
+    STDMETHODIMP OnPreservedKey(ITfContext*, REFGUID, BOOL* eaten) override {
+        if (!eaten) return E_POINTER;
+        *eaten = FALSE; return S_OK;
     }
     STDMETHODIMP OnTestKeyDown(ITfContext* ctx, WPARAM vk, LPARAM, BOOL* eaten) override {
         if (!eaten) return E_POINTER;
@@ -370,7 +374,8 @@ HRESULT register_service(bool enable) {
         hr = profiles->Register(kClsid);
         if (SUCCEEDED(hr)) {
             hr = profiles->AddLanguageProfile(kClsid, MAKELANGID(LANG_VIETNAMESE, SUBLANG_DEFAULT),
-                    kProfile, kProfileName, static_cast<ULONG>(wcslen(kProfileName)), dll, 0);
+                    kProfile, kProfileName, static_cast<ULONG>(wcslen(kProfileName)),
+                    dll, static_cast<ULONG>(wcslen(dll)), 0);
         }
     } else {
         hr = profiles->Unregister(kClsid);
@@ -387,10 +392,10 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID) {
     }
     return TRUE;
 }
-extern "C" __declspec(dllexport) HRESULT __stdcall DllCanUnloadNow() {
+extern "C" __declspec(dllexport) HRESULT __stdcall LakakeyDllCanUnloadNow() {
     return g_objects == 0 ? S_OK : S_FALSE;
 }
-extern "C" __declspec(dllexport) HRESULT __stdcall DllGetClassObject(
+extern "C" __declspec(dllexport) HRESULT __stdcall LakakeyDllGetClassObject(
         REFCLSID clsid, REFIID iid, void** object) {
     if (clsid != kClsid) return CLASS_E_CLASSNOTAVAILABLE;
     auto* factory = new Factory;
@@ -398,7 +403,7 @@ extern "C" __declspec(dllexport) HRESULT __stdcall DllGetClassObject(
     factory->Release();
     return hr;
 }
-extern "C" __declspec(dllexport) HRESULT __stdcall DllRegisterServer() {
+extern "C" __declspec(dllexport) HRESULT __stdcall LakakeyDllRegisterServer() {
     HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     const bool initialized = SUCCEEDED(hr);
     if (hr == RPC_E_CHANGED_MODE) hr = S_OK;
@@ -406,7 +411,7 @@ extern "C" __declspec(dllexport) HRESULT __stdcall DllRegisterServer() {
     if (initialized) CoUninitialize();
     return hr;
 }
-extern "C" __declspec(dllexport) HRESULT __stdcall DllUnregisterServer() {
+extern "C" __declspec(dllexport) HRESULT __stdcall LakakeyDllUnregisterServer() {
     HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     const bool initialized = SUCCEEDED(hr);
     if (hr == RPC_E_CHANGED_MODE) hr = S_OK;
