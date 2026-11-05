@@ -28,7 +28,7 @@ var inputLayouts = []string{"Telex", "Telex giản lược (chưa hỗ trợ)", 
 var encodings = []string{"Unicode", "TCVN3 (chưa hỗ trợ)", "VNI Windows (chưa hỗ trợ)", "VIQR (chưa hỗ trợ)", "CP 1258 (chưa hỗ trợ)", "Unicode tổ hợp (chưa hỗ trợ)", "UTF-8 Literal (chưa hỗ trợ)", "NCR Decimal (chưa hỗ trợ)", "NCR Hex (chưa hỗ trợ)", "Unicode C String (chưa hỗ trợ)"}
 
 func defaultSettings() Settings {
-	return Settings{Layout: "Telex", Encoding: "Unicode", ToggleKey: "Ctrl+Shift", Vietnamese: true, Mascot: "Off", ShowAtStartup: true}
+	return Settings{Layout: "Telex", Encoding: "Unicode", ToggleKey: "Alt+Z", Vietnamese: true, Mascot: "Off", ShowAtStartup: true}
 }
 func normalize(s Settings) Settings {
 	if s.Layout != "Telex" && s.Layout != "VNI" {
@@ -37,8 +37,8 @@ func normalize(s Settings) Settings {
 	if s.Encoding != "Unicode" {
 		s.Encoding = "Unicode"
 	}
-	if s.ToggleKey != "Ctrl+Shift" && s.ToggleKey != "Alt+Z" {
-		s.ToggleKey = "Ctrl+Shift"
+	if s.ToggleKey != "Alt+Z" {
+		s.ToggleKey = "Alt+Z"
 	}
 	if s.Mascot != "Full" && s.Mascot != "Minimal" && s.Mascot != "Off" {
 		s.Mascot = "Off"
