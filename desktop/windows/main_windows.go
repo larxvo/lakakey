@@ -1,6 +1,6 @@
 //go:build windows
 
-// Lakakey native Windows control panel & tray. This shell is NOT a system IME.
+// Lakakey native Windows control panel and tray.
 // Copyright (c) 2026 Larx Vo — https://vovinhlac.com
 package main
 
@@ -33,7 +33,6 @@ var (
 	setForegroundWindow = user32.NewProc("SetForegroundWindow")
 	postMessage         = user32.NewProc("PostMessageW")
 	postQuitMessage     = user32.NewProc("PostQuitMessage")
-	messageBox          = user32.NewProc("MessageBoxW")
 	createPopup         = user32.NewProc("CreatePopupMenu")
 	appendMenu          = user32.NewProc("AppendMenuW")
 	trackPopup          = user32.NewProc("TrackPopupMenu")
@@ -41,6 +40,13 @@ var (
 	getCursorPos        = user32.NewProc("GetCursorPos")
 	loadCursor          = user32.NewProc("LoadCursorW")
 	setProcessDpiAware  = user32.NewProc("SetProcessDPIAware")
+	findWindow          = user32.NewProc("FindWindowW")
+	registerWindowMsg   = user32.NewProc("RegisterWindowMessageW")
+	registerHotKey      = user32.NewProc("RegisterHotKey")
+	unregisterHotKey    = user32.NewProc("UnregisterHotKey")
+	createMutex         = kernel32.NewProc("CreateMutexW")
+	getLastError        = kernel32.NewProc("GetLastError")
+	enableWindow        = user32.NewProc("EnableWindow")
 	notifyIcon          = shell32.NewProc("Shell_NotifyIconW")
 	createIcon          = user32.NewProc("CreateIcon")
 	destroyIcon         = user32.NewProc("DestroyIcon")
@@ -50,71 +56,77 @@ var (
 )
 
 const (
-	WS_VISIBLE         = 0x10000000
-	WS_CHILD           = 0x40000000
-	WS_OVERLAPPED      = 0x00CF0000
-	WS_TABSTOP         = 0x00010000
-	WS_GROUP           = 0x00020000
-	BS_GROUPBOX        = 7
-	BS_AUTORADIOBUTTON = 9
-	BS_AUTOCHECKBOX    = 3
-	CBS_DROPDOWNLIST   = 3
-	WS_VSCROLL         = 0x00200000
-	WM_CREATE          = 1
-	WM_DESTROY         = 2
-	WM_CLOSE           = 0x10
-	WM_COMMAND         = 0x111
-	WM_SETFONT         = 0x30
-	WM_APP             = 0x8000
-	WM_LBUTTONUP       = 0x202
-	WM_RBUTTONUP       = 0x205
-	WM_LBUTTONDBLCLK   = 0x203
-	WM_NULL            = 0
-	WM_QUERYENDSESSION = 0x11
-	CB_ADDSTRING       = 0x143
-	CB_SETCURSEL       = 0x14E
-	CB_GETCURSEL       = 0x147
-	BM_SETCHECK        = 0xF1
-	BM_GETCHECK        = 0xF0
-	BST_CHECKED        = 1
-	SW_HIDE            = 0
-	SW_SHOW            = 5
-	SW_RESTORE         = 9
-	SWP_NOMOVE         = 2
-	SWP_NOZORDER       = 4
-	SWP_NOACTIVATE     = 0x10
-	NIM_ADD            = 0
-	NIM_MODIFY         = 1
-	NIM_DELETE         = 2
-	NIF_MESSAGE        = 1
-	NIF_ICON           = 2
-	NIF_TIP            = 4
-	TPM_RETURNCMD      = 0x100
-	TPM_RIGHTBUTTON    = 2
-	MF_STRING          = 0
-	MF_SEPARATOR       = 0x800
-	ID_ENCODING        = 101
-	ID_LAYOUT          = 102
-	ID_HOTKEY1         = 103
-	ID_HOTKEY2         = 104
-	ID_HIDE            = 105
-	ID_EXIT            = 106
-	ID_EXPAND          = 107
-	ID_ABOUT           = 108
-	ID_DEFAULT         = 109
-	ID_GUIDE           = 110
-	ID_VN              = 111
-	ID_MASCOT          = 112
-	ID_SPELL           = 201
-	ID_FREE            = 202
-	ID_TONE            = 203
-	ID_SHORTHAND       = 204
-	ID_SHORTHAND_EN    = 205
-	ID_SHOWSTART       = 206
-	ID_STARTWIN        = 207
-	ID_PERAPP          = 208
-	TRAY_MESSAGE       = WM_APP + 7
-	TRAY_UID           = 100
+	WS_VISIBLE           = 0x10000000
+	WS_CHILD             = 0x40000000
+	WS_OVERLAPPED        = 0x00CF0000
+	WS_TABSTOP           = 0x00010000
+	WS_GROUP             = 0x00020000
+	BS_GROUPBOX          = 7
+	BS_AUTORADIOBUTTON   = 9
+	BS_AUTOCHECKBOX      = 3
+	CBS_DROPDOWNLIST     = 3
+	WS_VSCROLL           = 0x00200000
+	WM_CREATE            = 1
+	WM_DESTROY           = 2
+	WM_CLOSE             = 0x10
+	WM_COMMAND           = 0x111
+	WM_SETFONT           = 0x30
+	WM_APP               = 0x8000
+	WM_LBUTTONUP         = 0x202
+	WM_RBUTTONUP         = 0x205
+	WM_LBUTTONDBLCLK     = 0x203
+	WM_NULL              = 0
+	WM_QUERYENDSESSION   = 0x11
+	WM_HOTKEY            = 0x312
+	HOTKEY_TOGGLE        = 0x4C4B
+	MOD_ALT              = 0x0001
+	VK_Z                 = 0x5A
+	WM_SINGLEEXIT        = WM_APP + 21
+	CB_ADDSTRING         = 0x143
+	CB_SETCURSEL         = 0x14E
+	CB_GETCURSEL         = 0x147
+	BM_SETCHECK          = 0xF1
+	BM_GETCHECK          = 0xF0
+	BST_CHECKED          = 1
+	SW_HIDE              = 0
+	SW_SHOW              = 5
+	SW_RESTORE           = 9
+	SWP_NOMOVE           = 2
+	SWP_NOZORDER         = 4
+	SWP_NOACTIVATE       = 0x10
+	NIM_ADD              = 0
+	NIM_MODIFY           = 1
+	NIM_DELETE           = 2
+	NIF_MESSAGE          = 1
+	NIF_ICON             = 2
+	NIF_TIP              = 4
+	TPM_RETURNCMD        = 0x100
+	TPM_RIGHTBUTTON      = 2
+	MF_STRING            = 0
+	MF_SEPARATOR         = 0x800
+	ID_ENCODING          = 101
+	ID_LAYOUT            = 102
+	ID_HOTKEY1           = 103
+	ID_HOTKEY2           = 104
+	ID_HIDE              = 105
+	ID_EXIT              = 106
+	ID_EXPAND            = 107
+	ID_ABOUT             = 108
+	ID_DEFAULT           = 109
+	ID_GUIDE             = 110
+	ID_VN                = 111
+	ID_MASCOT            = 112
+	ID_SPELL             = 201
+	ID_FREE              = 202
+	ID_TONE              = 203
+	ID_SHORTHAND         = 204
+	ID_SHORTHAND_EN      = 205
+	ID_SHOWSTART         = 206
+	ID_STARTWIN          = 207
+	ID_PERAPP            = 208
+	TRAY_MESSAGE         = WM_APP + 7
+	TRAY_UID             = 100
+	ERROR_ALREADY_EXISTS = 183
 )
 
 type wndClass struct {
@@ -159,6 +171,12 @@ var (
 	expandedHandles     []uintptr
 	controlsReady       bool
 	quitRequested       bool
+	taskbarCreated      uintptr
+	instanceMutex       uintptr
+	statusLabel         uintptr
+	detailLabel         uintptr
+	detailMode          string
+	hotkeyRegistered    bool
 )
 
 func wide(s string) *uint16   { return syscall.StringToUTF16Ptr(s) }
@@ -172,7 +190,6 @@ func setText(h uintptr, text string) {
 		setWindowText.Call(h, strPtr(text))
 	}
 }
-func info(text string) { messageBox.Call(hwnd, strPtr(text), strPtr("Lakakey — Larx Vo"), 0x40) }
 func clientControl(class, text string, style uint32, id uint16, x, y, w, h int32) uintptr {
 	inst, _, _ := getModuleHandle.Call(0)
 	handle, _, _ := createWindow.Call(0, strPtr(class), strPtr(text), uintptr(WS_CHILD|WS_VISIBLE|style), uintptr(x), uintptr(y), uintptr(w), uintptr(h), hwnd, uintptr(id), inst, 0)
@@ -248,26 +265,32 @@ func createControls() {
 	button("Kết thúc", ID_EXIT, 439, 68, 119)
 	button("Mở rộng  ▾", ID_EXPAND, 439, 108, 119)
 	// These explain the actual implementation stage, rather than mimicking a system IME.
-	label("Lakakey Desktop Beta — chưa kích hoạt bộ gõ toàn hệ thống", 18, 192, 535)
+	statusLabel = label("Lakakey · Thiết lập và điều khiển", 18, 192, 535)
 	button("Hướng dẫn", ID_GUIDE, 16, 226, 105)
 	button("Thông tin", ID_ABOUT, 130, 226, 105)
 	button("Mặc định", ID_DEFAULT, 244, 226, 105)
-	button("VN / EN (demo)", ID_VN, 359, 226, 200)
+	button("VN / EN", ID_VN, 359, 226, 200)
 
 	expandedHandles = append(expandedHandles, group("Tùy chọn khác", 16, 279, 355, 138))
 	expandedHandles = append(expandedHandles, check("Cho phép gõ tự do", ID_FREE, 28, 309, 305))
 	expandedHandles = append(expandedHandles, check("Đặt dấu òa, úy (kiểu mới)", ID_TONE, 28, 336, 305))
-	expandedHandles = append(expandedHandles, check("Bật kiểm tra chính tả (sắp ra mắt)", ID_SPELL, 28, 363, 318))
+	expandedHandles = append(expandedHandles, check("Kiểm tra chính tả", ID_SPELL, 28, 363, 318))
 	expandedHandles = append(expandedHandles, group("Tùy chọn gõ tắt", 16, 428, 355, 108))
-	expandedHandles = append(expandedHandles, check("Cho phép gõ tắt (sắp ra mắt)", ID_SHORTHAND, 28, 458, 320))
+	expandedHandles = append(expandedHandles, check("Cho phép gõ tắt", ID_SHORTHAND, 28, 458, 320))
 	expandedHandles = append(expandedHandles, check("Cho phép gõ tắt khi ở chế độ EN", ID_SHORTHAND_EN, 28, 484, 330))
 	expandedHandles = append(expandedHandles, group("Hệ thống", 383, 279, 176, 257))
 	expandedHandles = append(expandedHandles, check("Hiện khi khởi động", ID_SHOWSTART, 396, 311, 161))
 	expandedHandles = append(expandedHandles, check("Cùng Windows", ID_STARTWIN, 396, 341, 153))
-	expandedHandles = append(expandedHandles, check("Theo ứng dụng (dự kiến)", ID_PERAPP, 396, 373, 163))
+	expandedHandles = append(expandedHandles, check("Theo từng ứng dụng", ID_PERAPP, 396, 373, 163))
 	expandedHandles = append(expandedHandles, label("Mascot", 396, 411, 154))
 	expandedHandles = append(expandedHandles, combo(ID_MASCOT, 396, 439, 145, []string{"Off", "Minimal", "Full"}))
-	expandedHandles = append(expandedHandles, label("Mascot animation chưa có", 396, 480, 163))
+	expandedHandles = append(expandedHandles, label("Tùy biến hình đại diện", 396, 480, 163))
+	// Inline guide / about: no disruptive modal dialogs.
+	detailLabel = clientControl("STATIC", "", 0, 0, 27, 303, 518, 212)
+	// Hide unfinished controls instead of offering options that have no effect.
+	for _, id := range []uint16{ID_HOTKEY1, ID_FREE, ID_TONE, ID_SPELL, ID_SHORTHAND, ID_SHORTHAND_EN, ID_PERAPP, ID_MASCOT} {
+		enableWindow.Call(handles[id], 0)
+	}
 	controlsReady = true
 	refresh()
 }
@@ -287,20 +310,31 @@ func refresh() {
 		mark(pair.id, pair.v)
 	}
 	if cfg.Vietnamese {
-		setText(handles[ID_VN], "VN (demo) → English")
+		setText(handles[ID_VN], "Chế độ: VN")
 	} else {
-		setText(handles[ID_VN], "EN (demo) → Tiếng Việt")
+		setText(handles[ID_VN], "Chế độ: EN")
 	}
 	if cfg.Expanded {
-		setText(handles[ID_EXPAND], "Thu nhỏ  ▴")
+		if detailMode != "" {
+			setText(handles[ID_EXPAND], "Tùy chọn  ▴")
+		} else {
+			setText(handles[ID_EXPAND], "Thu nhỏ  ▴")
+		}
 	} else {
 		setText(handles[ID_EXPAND], "Mở rộng  ▾")
 	}
 	for _, h := range expandedHandles {
-		if cfg.Expanded {
+		if cfg.Expanded && detailMode == "" {
 			showWindow.Call(h, SW_SHOW)
 		} else {
 			showWindow.Call(h, SW_HIDE)
+		}
+	}
+	if detailLabel != 0 {
+		if cfg.Expanded && detailMode != "" {
+			showWindow.Call(detailLabel, SW_SHOW)
+		} else {
+			showWindow.Call(detailLabel, SW_HIDE)
 		}
 	}
 	height := int32(320)
@@ -314,13 +348,13 @@ func refresh() {
 }
 func save() {
 	if err := writeSettings(cfg); err != nil {
-		info("Không lưu được thiết lập: " + err.Error())
+		setText(statusLabel, "Không lưu được cấu hình: "+err.Error())
 	}
 }
 func startupRegistration(on bool) {
 	exe, err := os.Executable()
 	if err != nil {
-		info("Không thể tìm tệp thực thi: " + err.Error())
+		setText(statusLabel, "Không xác định được đường dẫn ứng dụng")
 		return
 	}
 	exe, _ = filepath.Abs(exe)
@@ -337,7 +371,7 @@ func startupRegistration(on bool) {
 			return
 		} // deleting an absent startup value is harmless
 		cfg.StartWithWindows = !on
-		info("Không cập nhật được Windows startup: " + err.Error())
+		setText(statusLabel, "Chưa thể cập nhật khởi động cùng Windows")
 	}
 }
 func onCommand(wp uintptr) {
@@ -352,25 +386,36 @@ func onCommand(wp uintptr) {
 		user32.NewProc("DestroyWindow").Call(hwnd)
 		changed = false
 	case ID_EXPAND:
-		cfg.Expanded = !cfg.Expanded
+		if detailMode != "" {
+			detailMode = ""
+			cfg.Expanded = true
+		} else {
+			cfg.Expanded = !cfg.Expanded
+		}
 	case ID_ABOUT:
-		info("Lakakey Desktop Beta\nBảng điều khiển tiếng Việt — bản thử nghiệm.\n\nChưa cài đặt Windows TSF IME, chưa gõ tiếng Việt toàn hệ thống.\n\nTác giả: Larx Vo\n© 2026 Larx Vo\nhttps://vovinhlac.com\n\nPhần mềm miễn phí, lưu cấu hình trên máy.")
+		detailMode = "about"
+		cfg.Expanded = true
+		setText(detailLabel, "LAKAKEY  ·  Windows Desktop\r\n\r\nỨng dụng nhập liệu tiếng Việt\r\nPhiên bản 0.10.1\r\n\r\nTác giả: Larx Vo\r\nWebsite: https://vovinhlac.com\r\n\r\nMiễn phí · Hoạt động cục bộ · Không tài khoản")
 		changed = false
 	case ID_GUIDE:
-		info("1. Mở rộng để xem các thiết lập.\n2. Chọn Telex hoặc VNI, Unicode.\n3. Dùng menu dưới system tray để mở lại.\n\nĐây là bản UI beta; bạn vẫn phải dùng bộ gõ đang có để nhập tiếng Việt.\nCác tùy chọn chưa hỗ trợ không ảnh hưởng hệ thống.")
+		detailMode = "guide"
+		cfg.Expanded = true
+		setText(detailLabel, "HƯỚNG DẪN SỬ DỤNG\r\n\r\n1. Chọn Telex hoặc VNI và Unicode.\r\n2. Chuyển chế độ ở khay hệ thống hoặc Alt + Z khi được chọn.\r\n3. Nhấn Đóng để ẩn cửa sổ xuống khay.\r\n4. Nhấn Mở rộng để xem các thiết lập nâng cao.\r\n\r\nTùy chọn chưa khả dụng được khóa trong giao diện.")
 		changed = false
 	case ID_DEFAULT:
+		detailMode = ""
 		wasStartup := cfg.StartWithWindows
 		cfg = defaultSettings()
 		if wasStartup {
 			startupRegistration(false)
 		}
+		updateHotkey()
 	case ID_VN:
 		cfg.Vietnamese = !cfg.Vietnamese
 	case ID_LAYOUT:
 		selected := readCombo(id, inputLayouts)
 		if selected != "Telex" && selected != "VNI" {
-			info("Kiểu gõ này chưa được triển khai. Hệ thống tiếp tục lưu Telex/VNI; chưa gõ tiếng Việt thực tế.")
+			setText(statusLabel, "Kiểu gõ này chưa khả dụng")
 			changed = false
 		} else {
 			cfg.Layout = selected
@@ -378,19 +423,21 @@ func onCommand(wp uintptr) {
 	case ID_ENCODING:
 		selected := readCombo(id, encodings)
 		if selected != "Unicode" {
-			info("Bảng mã này chưa có bộ chuyển mã. Hiện chỉ hỗ trợ cấu hình Unicode.")
+			setText(statusLabel, "Bảng mã này chưa khả dụng")
 			changed = false
 		}
 	case ID_HOTKEY1:
 		cfg.ToggleKey = "Ctrl+Shift"
+		updateHotkey()
 	case ID_HOTKEY2:
 		cfg.ToggleKey = "Alt+Z"
+		updateHotkey()
 	case ID_FREE:
 		cfg.FreeTyping = checked(id)
 	case ID_TONE:
 		cfg.ModernTone = checked(id)
 	case ID_SPELL, ID_SHORTHAND, ID_SHORTHAND_EN, ID_PERAPP:
-		info("Tùy chọn này chỉ đang được thiết kế; chưa có xử lý chức năng.")
+		setText(statusLabel, "Tùy chọn này đang được phát triển")
 		changed = false
 	case ID_SHOWSTART:
 		cfg.ShowAtStartup = checked(id)
@@ -408,6 +455,27 @@ func onCommand(wp uintptr) {
 	refresh()
 }
 
+func updateHotkey() {
+	if hwnd == 0 {
+		return
+	}
+	if hotkeyRegistered {
+		unregisterHotKey.Call(hwnd, HOTKEY_TOGGLE)
+		hotkeyRegistered = false
+	}
+	if cfg.ToggleKey == "Alt+Z" {
+		r, _, _ := registerHotKey.Call(hwnd, HOTKEY_TOGGLE, MOD_ALT, VK_Z)
+		hotkeyRegistered = r != 0
+		if !hotkeyRegistered {
+			setText(statusLabel, "Alt + Z đang được ứng dụng khác sử dụng")
+		}
+	}
+}
+func toggleMode() {
+	cfg.Vietnamese = !cfg.Vietnamese
+	save()
+	refresh()
+}
 func iconForMode(vietnamese bool) uintptr {
 	const size = 32
 	andMask := make([]byte, size*size/8)
@@ -453,9 +521,9 @@ func int32Abs(i int) int {
 func makeNID() notifyIconData {
 	data := notifyIconData{Hwnd: hwnd, UID: TRAY_UID, Flags: NIF_ICON | NIF_MESSAGE | NIF_TIP, CallbackMessage: TRAY_MESSAGE, HIcon: appIcon}
 	data.CbSize = uint32(unsafe.Sizeof(data))
-	tip := "Lakakey Desktop Beta — EN (UI only)"
+	tip := "Lakakey · EN"
 	if cfg.Vietnamese {
-		tip = "Lakakey Desktop Beta — VN (UI only)"
+		tip = "Lakakey · VN"
 	}
 	copy(data.Tip[:], syscall.StringToUTF16(tip))
 	return data
@@ -488,9 +556,9 @@ func trayMenu() {
 	if menu == 0 {
 		return
 	}
-	state := "Chuyển sang EN (chỉ giao diện)"
+	state := "Chuyển sang EN"
 	if !cfg.Vietnamese {
-		state = "Chuyển sang VN (chỉ giao diện)"
+		state = "Chuyển sang VN"
 	}
 	appendMenu.Call(menu, MF_STRING, 1, strPtr(state))
 	appendMenu.Call(menu, MF_STRING, 2, strPtr("Mở cài đặt Lakakey"))
@@ -505,9 +573,7 @@ func trayMenu() {
 	postMessage.Call(hwnd, WM_NULL, 0, 0)
 	switch result {
 	case 1:
-		cfg.Vietnamese = !cfg.Vietnamese
-		save()
-		refresh()
+		toggleMode()
 	case 2:
 		openSettings()
 	case 3:
@@ -517,6 +583,10 @@ func trayMenu() {
 	}
 }
 func windowProc(h, msg, wp, lp uintptr) uintptr {
+	if taskbarCreated != 0 && msg == taskbarCreated {
+		addTray() // Explorer restarted: restore icon without opening a window.
+		return 0
+	}
 	switch msg {
 	case WM_CREATE:
 		hwnd = h
@@ -525,10 +595,14 @@ func windowProc(h, msg, wp, lp uintptr) uintptr {
 		font = f
 		_ = inst
 		createControls()
+		updateHotkey()
 		addTray()
 		return 0
 	case WM_COMMAND:
-		onCommand(wp)
+		// Only selection changes and button clicks are user actions.
+		if wp>>16 == 0 || wp>>16 == 1 {
+			onCommand(wp)
+		}
 		return 0
 	case WM_CLOSE:
 		if quitRequested {
@@ -537,22 +611,32 @@ func windowProc(h, msg, wp, lp uintptr) uintptr {
 			showWindow.Call(h, SW_HIDE)
 		}
 		return 0
+	case WM_HOTKEY:
+		if wp == HOTKEY_TOGGLE && cfg.ToggleKey == "Alt+Z" {
+			toggleMode()
+		}
+		return 0
 	case WM_QUERYENDSESSION:
 		_ = writeSettings(cfg)
 		return 1
 	case TRAY_MESSAGE:
 		switch lp & 0xffff {
 		case WM_LBUTTONUP:
-			cfg.Vietnamese = !cfg.Vietnamese
-			save()
-			refresh()
+			toggleMode()
 		case WM_LBUTTONDBLCLK:
 			openSettings()
 		case WM_RBUTTONUP:
 			trayMenu()
 		}
 		return 0
+	case WM_SINGLEEXIT:
+		quitRequested = true
+		user32.NewProc("DestroyWindow").Call(h)
+		return 0
 	case WM_DESTROY:
+		if hotkeyRegistered {
+			unregisterHotKey.Call(hwnd, HOTKEY_TOGGLE)
+		}
 		removeTray()
 		if font != 0 {
 			deleteObject.Call(font)
@@ -565,6 +649,25 @@ func windowProc(h, msg, wp, lp uintptr) uintptr {
 }
 func main() {
 	runtime.LockOSThread()
+	instanceMutex, _, _ = createMutex.Call(0, 0, strPtr("Local\\LakakeyDesktopSingleInstance"))
+	if instanceMutex != 0 {
+		if last, _, _ := getLastError.Call(); last == ERROR_ALREADY_EXISTS {
+			existing, _, _ := findWindow.Call(strPtr("LakakeyNativeDesktop2026"), 0)
+			if existing != 0 {
+				if len(os.Args) > 1 && strings.EqualFold(os.Args[1], "--quit") {
+					postMessage.Call(existing, WM_SINGLEEXIT, 0, 0)
+				} else if !(len(os.Args) > 1 && strings.EqualFold(os.Args[1], "--tray")) {
+					showWindow.Call(existing, SW_RESTORE)
+					setForegroundWindow.Call(existing)
+				}
+			}
+			return
+		}
+	}
+	if len(os.Args) > 1 && strings.EqualFold(os.Args[1], "--quit") {
+		return
+	}
+	taskbarCreated, _, _ = registerWindowMsg.Call(strPtr("TaskbarCreated"))
 	cfg = readSettings()
 	if err := writeSettings(cfg); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -576,10 +679,10 @@ func main() {
 	wc.Cursor, _, _ = loadCursor.Call(0, 32512)
 	reg, _, _ := registerClass.Call(uintptr(unsafe.Pointer(&wc)))
 	if reg == 0 {
-		info("Không tạo được Windows class.")
+		fmt.Fprintln(os.Stderr, "Lakakey window initialization failed")
 		return
 	}
-	window, _, _ := createWindow.Call(0, uintptr(unsafe.Pointer(class)), strPtr("Lakakey — Vietnamese Input Settings (Beta)"), 0x00CA0000, 130, 100, 592, 320, 0, 0, instance, 0)
+	window, _, _ := createWindow.Call(0, uintptr(unsafe.Pointer(class)), strPtr("Lakakey · Cài đặt"), 0x00CA0000, 130, 100, 592, 320, 0, 0, instance, 0)
 	if window == 0 {
 		return
 	}
