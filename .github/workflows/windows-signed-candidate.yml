@@ -1,0 +1,82 @@
+name: Windows signed preview — manual candidate only
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signed-preview:
+    name: Build, Authenticode sign and verify (no public publishing)
+    runs-on: windows-2022
+    timeout-minutes: 25
+    steps:
+      - name: Checkout pinned source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+
+      - name: Build Windows Settings preview
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'winpreview/installer/payload/mascot.bmp')) { throw 'Required mascot asset missing' }
+          go build -trimpath -ldflags '-s -w -H=windowsgui' -o winpreview/installer/payload/LakakeyPreview.exe ./winpreview/app
+          if ($LASTEXITCODE -ne 0) { throw 'Preview build failed' }
+
+      - name: Sign inner app with trusted publisher certificate
+        shell: pwsh
+        env:
+          LAKAKEY_SIGN_PFX_BASE64: ${{ secrets.LAKAKEY_SIGN_PFX_BASE64 }}
+          LAKAKEY_SIGN_PFX_PASSWORD: ${{ secrets.LAKAKEY_SIGN_PFX_PASSWORD }}
+        run: |
+          ./scripts/windows/Sign-LakakeyRelease.ps1 -Files 'winpreview/installer/payload/LakakeyPreview.exe'
+
+      - name: Build installer embedding the already-signed app
+        shell: pwsh
+        run: |
+          go build -trimpath -ldflags '-s -w -H=windowsgui' -o LakakeyPreviewSetup.exe ./winpreview/installer
+          if ($LASTEXITCODE -ne 0) { throw 'Preview setup build failed' }
+
+      - name: Sign and verify setup
+        shell: pwsh
+        env:
+          LAKAKEY_SIGN_PFX_BASE64: ${{ secrets.LAKAKEY_SIGN_PFX_BASE64 }}
+          LAKAKEY_SIGN_PFX_PASSWORD: ${{ secrets.LAKAKEY_SIGN_PFX_PASSWORD }}
+        run: |
+          ./scripts/windows/Sign-LakakeyRelease.ps1 -Files 'LakakeyPreviewSetup.exe'
+
+      - name: Generate SHA-256 manifest and provenance note
+        shell: pwsh
+        run: |
+          $files = @('LakakeyPreviewSetup.exe', 'winpreview/installer/payload/LakakeyPreview.exe')
+          $lines = foreach ($file in $files) {
+            $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $file).Hash.ToLowerInvariant()
+            "$hash  $file"
+          }
+          $lines | Set-Content -Path SHA256SUMS.txt -Encoding ascii
+          @(
+            'Lakakey v0.8 Windows Settings Preview - signed candidate, not an IME'
+            "Git commit: $env:GITHUB_SHA"
+            "Workflow run: $env:GITHUB_RUN_ID"
+            'This release candidate does NOT provide system-wide Vietnamese typing.'
+            'A valid Authenticode signature verifies publisher and file integrity.'
+            'SmartScreen can still warn until Windows establishes sufficient reputation.'
+            'Copyright 2026 Larx Vo - https://vovinhlac.com'
+          ) | Set-Content -Path RELEASE_INFO.txt -Encoding UTF8
+
+      - name: Upload internally reviewed candidate (no GitHub Release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lakakey-Windows-Preview-Signed-Candidate
+          path: |
+            LakakeyPreviewSetup.exe
+            SHA256SUMS.txt
+            RELEASE_INFO.txt
+          if-no-files-found: error
+          retention-days: 30
