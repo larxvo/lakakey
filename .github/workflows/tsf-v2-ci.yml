@@ -1,0 +1,47 @@
+name: Experimental Windows TSF v2 compile (no distribution)
+
+on:
+  push:
+    branches:
+      - feature/tsf-native-edit-session
+    paths:
+      - 'platform/windows/tsf/**'
+      - 'src/**'
+      - 'include/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/tsf-v2-ci.yml'
+  pull_request:
+    paths:
+      - 'platform/windows/tsf/**'
+      - 'src/**'
+      - 'include/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/tsf-v2-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tsf-windows:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure prototype
+        shell: pwsh
+        run: cmake -S . -B build -A x64 -DLAKAKEY_BUILD_TSF_V2=ON -DLAKAKEY_BUILD_EXPERIMENTAL_TSF=OFF -DLAKAKEY_BUILD_TESTS=ON
+      - name: Build prototype and portable core
+        shell: pwsh
+        run: cmake --build build --config Release --parallel
+      - name: Execute portable core tests
+        shell: pwsh
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Assert prototype DLL exists (do not install)
+        shell: pwsh
+        run: |
+          $dll = Get-ChildItem -Path build -Filter LakakeyTsfV2.dll -Recurse | Select-Object -First 1
+          if (-not $dll) { throw 'TSF prototype DLL was not created' }
+          Get-FileHash $dll.FullName -Algorithm SHA256
+      # Intentionally no upload-artifact and no GitHub Release.
+      # This DLL is a development prototype, not a safe Windows installer.
