@@ -1,0 +1,49 @@
+name: Signing pipeline syntax and source checks
+
+on:
+  push:
+    branches: [fix/trusted-windows-release]
+    paths:
+      - 'scripts/windows/**'
+      - '.github/workflows/windows-signed-candidate.yml'
+      - '.github/workflows/windows-signing-lint.yml'
+      - 'winpreview/**'
+  pull_request:
+    paths:
+      - 'scripts/windows/**'
+      - '.github/workflows/windows-signed-candidate.yml'
+      - '.github/workflows/windows-signing-lint.yml'
+      - 'winpreview/**'
+
+permissions:
+  contents: read
+
+jobs:
+  signing-source:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+      - name: Parse Windows signing PowerShell without executing secret operations
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path scripts/windows/Sign-LakakeyRelease.ps1),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Error $_.ToString() }; throw 'Signing script has PowerShell syntax errors' }
+      - name: Compile preview source without signing or publishing
+        shell: pwsh
+        run: |
+          go build -trimpath -ldflags '-s -w -H=windowsgui' -o winpreview/installer/payload/LakakeyPreview.exe ./winpreview/app
+          if ($LASTEXITCODE -ne 0) { throw 'App compilation failed' }
+          go build -trimpath -ldflags '-s -w -H=windowsgui' -o LakakeyPreviewSetup.exe ./winpreview/installer
+          if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed' }
+          if ((Get-Item LakakeyPreviewSetup.exe).Length -lt 100000) { throw 'Invalid EXE' }
+      # No signing secrets used; no artifacts published to end users.
