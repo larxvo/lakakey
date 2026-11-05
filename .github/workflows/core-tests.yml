@@ -1,0 +1,24 @@
+name: Portable C++ core tests
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'CMakeLists.txt'
+      - 'include/**'
+      - 'src/**'
+      - 'tests/**'
+      - '.github/workflows/core-tests.yml'
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  linux-core:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Compile
+        run: cmake --build build -j 2
+      - name: Tests
+        run: ctest --test-dir build --output-on-failure

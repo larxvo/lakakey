@@ -1,0 +1,9 @@
+build/
+build-win/
+build-macos/
+*.o
+*.obj
+*.pdb
+.DS_Store
+/LakakeyPreviewSetup.exe
+winpreview/installer/payload/LakakeyPreview.exe

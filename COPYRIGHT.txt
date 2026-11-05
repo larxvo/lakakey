@@ -1,0 +1,10 @@
+Lakakey
+Copyright © 2026 Larx Vo
+Author information: https://vovinhlac.com
+
+Author attribution should appear clearly in About and on the product website.
+The author wishes to make the resulting application free for users, without
+paywalls, text watermarks, forced registration or unnecessary network access.
+
+A formal software distribution/source code license has not yet been selected
+by the author. Do not assume the project is automatically open-source licensed.

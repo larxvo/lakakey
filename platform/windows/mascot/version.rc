@@ -1,0 +1,30 @@
+#include <winver.h>
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 0,5,0,0
+ PRODUCTVERSION 0,5,0,0
+ FILEFLAGSMASK 0x3fL
+ FILEFLAGS 0
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_APP
+ FILESUBTYPE VFT2_UNKNOWN
+BEGIN
+ BLOCK "StringFileInfo"
+ BEGIN
+  BLOCK "040904B0"
+  BEGIN
+   VALUE "CompanyName", "Larx Vo\0"
+   VALUE "FileDescription", "Lakakey Native Mascot Runtime\0"
+   VALUE "FileVersion", "0.5.0\0"
+   VALUE "InternalName", "LakakeyMascot\0"
+   VALUE "LegalCopyright", "Copyright (C) 2026 Larx Vo. All rights reserved.\0"
+   VALUE "OriginalFilename", "LakakeyMascot.exe\0"
+   VALUE "ProductName", "Lakakey\0"
+   VALUE "ProductVersion", "0.5.0\0"
+   VALUE "Comments", "Free software. Author: Larx Vo. https://vovinhlac.com\0"
+  END
+ END
+ BLOCK "VarFileInfo"
+ BEGIN
+  VALUE "Translation", 0x0409, 1200
+ END
+END
