@@ -1,84 +1,136 @@
-# Lakakey — xử lý Microsoft Defender SmartScreen đúng cách
+# Lakakey — phát hành Windows dưới danh nghĩa cá nhân Larx Vo
 
-© 2026 Larx Vo — https://vovinhlac.com
+© 2026 Larx Vo · https://vovinhlac.com
 
-## Chẩn đoán hiện tại
+> **Trạng thái:** đây là hướng dẫn thiết lập phát hành có ký số. Hiện chưa có
+> chứng thư cá nhân được xác minh và chưa có file EXE mới ký hợp lệ.
+> Bản v0.8 chỉ là Windows Settings preview, **không phải bộ gõ tiếng Việt**.
+> Windows TSF Native Alpha chưa được kiểm thử gõ thật đầy đủ.
 
-Ảnh người dùng cho thấy **Windows protected your PC** và dòng
-**Microsoft Defender SmartScreen prevented an unrecognized app from starting**
-khi mở `LakakeyPreviewSetup.exe`.
+## 1. SmartScreen đang chặn điều gì?
 
-Đây là cảnh báo về mức độ tin cậy / danh tiếng của file và nhà phát hành,
-**không phải bằng chứng malware**, cũng không chứng minh file an toàn.
-Không cần đăng ứng dụng lên Microsoft Store để có thể phát hành bộ cài EXE độc lập.
+Ảnh chụp của người dùng hiện `Windows protected your PC` và thông báo
+`Microsoft Defender SmartScreen prevented an unrecognized app from starting`
+khi mở `LakakeyPreviewSetup.exe`. Windows chưa đủ độ tin cậy đối với EXE hoặc
+publisher. Cảnh báo **không tự động xác nhận có mã độc**, nhưng cũng **không xác
+nhận phần mềm an toàn**. Không cần xuất bản qua Microsoft Store để có thể cài
+ứng dụng Win32 độc lập. Không tắt SmartScreen hoặc khuyên người dùng
+`Run anyway` cho bản IME chưa QA.
 
-**Bản v0.8 chỉ là Settings preview, chưa gõ tiếng Việt toàn hệ thống.**
-Không nên vô hiệu hóa SmartScreen hoặc khuyên người dùng bấm Run anyway.
-TSF native alpha là bản thử nghiệm kỹ thuật riêng, không phải bản ổn định.
+## 2. Cá nhân Larx Vo cần xin chứng thư gì?
 
-## Đường phát hành được đề xuất
+Chọn **publicly trusted code-signing certificate** cho cá nhân, từ một CA
+được Windows tin cậy, hoặc dịch vụ ký phần mềm có xác minh danh tính cá nhân
+và hỗ trợ Windows Authenticode. Không mua chứng thư SSL/TLS cho website để
+thay thế vì mục đích khác.
 
-1. Hoàn thiện và QA Windows TSF IME trên Windows 10/11 trước khi public.
-2. Chọn phương án ký số có xác minh danh tính nhà phát hành:
-   - Chứng thư code-signing được CA đáng tin cậy cấp cho cá nhân/doanh nghiệp,
-     hoặc hệ thống cloud/HSM signing được hỗ trợ bởi công cụ phát hành.
-   - Nếu dùng PFX có thể xuất được: cấu hình bí mật `LAKAKEY_SIGN_PFX_BASE64`
-     và `LAKAKEY_SIGN_PFX_PASSWORD` trong GitHub Actions secrets.
-   - Nếu CA không cho xuất private key thành PFX, dùng integration cloud/HSM phù hợp.
-     **Tuyệt đối không xuất private key lên GitHub hay commit certificate/password.**
-3. Chạy thủ công `Windows signed preview — manual candidate only`.
-   Workflow fail-closed nếu không có chứng thư hợp lệ, và không tự phát hành công khai.
-4. Xem `SHA256SUMS.txt`, `RELEASE_INFO.txt`, chữ ký Authenticode và scan bảo mật.
-5. Kiểm thử sạch trên VM, cả cài / update / uninstall, UI, IME, Word/Notepad/Chrome/Edge.
-6. Chỉ sau khi vượt QA, mới xuất bản GitHub Releases với hướng dẫn rõ chức năng.
+- Đăng ký bằng **tên pháp lý trùng với giấy tờ tùy thân**, cung cấp thông tin
+  liên hệ và giấy tờ theo quy trình KYC của đơn vị cấp; có thể cần xác minh
+  qua video/điện thoại. Không khai tên hiển thị `Larx Vo` thay tên pháp lý
+  nếu đơn vị cấp không chấp nhận.
+- Nhãn thương hiệu trong giao diện/README/website vẫn dùng **Larx Vo** và
+  **vovinhlac.com**. Windows `Verified publisher` hiển thị danh tính trong
+  chứng thư, không tự động hiển thị nickname `Larx Vo`.
+- Trước khi thanh toán, hỏi trực tiếp nhà cung cấp: **có cấp chứng thư cho cá
+  nhân cư trú tại Việt Nam không?** Loại xác minh danh tính, phí thực tế,
+  hình thức giữ private key, tương thích SignTool/Authenticode, timestamp,
+  quy trình gia hạn/thu hồi, và có phát sinh chi phí dịch vụ ký hay không.
+- Khóa riêng nên là **non-exportable** qua token/HSM hoặc dịch vụ cloud ký
+  được quản lý. Không gửi CCCD, mật khẩu, token PIN, khóa riêng hay PFX vào
+  ChatGPT, GitHub Issues, commit, Actions variables/logs hoặc email công khai.
+- Một số chứng thư cá nhân có thể không tương thích với mô hình runner; xác
+  minh phương thức ký trước khi mua. Không thể bảo đảm giá/điều kiện hiện hành
+  nếu chưa có xác nhận chính thức từ nhà cung cấp.
 
-## Thiết lập secrets (chỉ khi đã có PFX hợp lệ)
+### Lưu ý về SmartScreen
 
-Trong repository GitHub:
+Chữ ký Authenticode hợp lệ giúp Windows kiểm tra **nguồn gốc nhà phát hành
+và tính toàn vẹn file**, **không bảo đảm SmartScreen hết cảnh báo ngay**.
+Danh tiếng của publisher/file vẫn phải được Windows đánh giá qua thời gian.
+Không thể tự tạo `Verified publisher` chỉ bằng sửa metadata EXE.
 
-Settings → Secrets and variables → Actions → New repository secret.
+## 3. Đã triển khai trong GitHub
 
-- `LAKAKEY_SIGN_PFX_BASE64`: nội dung PFX được mã hóa base64.
-- `LAKAKEY_SIGN_PFX_PASSWORD`: mật khẩu chứng thư.
+Nhánh `fix/trusted-windows-release` gồm:
 
-Không đưa các giá trị bí mật vào tin nhắn, Issues, logs hay source code.
-Không tạo chứng thư tự ký rồi tuyên bố là publisher đã xác minh.
+- `scripts/windows/Sign-LakakeyRelease.ps1`: lấy chứng thư từ
+  `Cert:\CurrentUser\My` trên Windows có private key sẵn, yêu cầu code-signing
+  EKU, subject khớp danh tính pháp lý, kiểm tra certificate chain + revocation,
+  ký SHA-256 và xác minh chữ ký/timestamp qua Windows SDK SignTool.
+- `.github/workflows/windows-signed-candidate.yml`: workflow thủ công, chỉ ký
+  source đã duyệt trên `main`, sử dụng runner Windows x64 gắn nhãn
+  `lakakey-signing` và GitHub Environment `lakakey-production-signing`.
+  **Không tự động đăng GitHub Releases.**
+- `.github/workflows/windows-signing-lint.yml`: kiểm tra cú pháp script
+  ký số và compile preview không cần certificate.
+- `SHA256SUMS.txt`: manifest SHA-256 đi kèm artifact.
 
-Workflow được thiết kế cho **PFX xuất được**, không áp dụng cho chứng thư
-khóa riêng trong USB/HSM không xuất được. Khi dùng giải pháp cloud signing,
-phải thêm adapter tương ứng và chính sách phân quyền ký chỉ với nhánh/release tin cậy.
+**Không đưa chứng thư cá nhân vào shared GitHub-hosted runner và không dùng
+biến `LAKAKEY_SIGN_PFX_BASE64` hoặc `LAKAKEY_SIGN_PFX_PASSWORD` nữa.**
 
-## Xác minh file sau khi nhận bản ký
+## 4. Cài đặt môi trường ký số trên GitHub
 
-Mở PowerShell trên Windows:
+Chỉ triển khai khi đã có chứng thư hợp lệ:
+
+1. Hoàn thiện Pull Request, chạy lint và review, merge vào `main`.
+2. Trong GitHub repository → **Settings → Environments** → tạo
+   `lakakey-production-signing`; bật required reviewers (nếu quyền repo/plan
+   hỗ trợ), restrict deployment branches to `main`. Không cho PR từ fork
+   chạy code trên runner được phép ký.
+3. Chuẩn bị **Windows x64 runner chuyên dụng** mà chính mình kiểm soát;
+   gán nhãn `lakakey-signing`. Bảo vệ máy, hạn chế người truy cập, dùng
+   runner tạm thời/ephemeral khi phù hợp; không cho workflow bên ngoài
+   truy cập khóa ký. Tối ưu hơn là dịch vụ cloud signing hỗ trợ ký từ GitHub
+   với OIDC và quyền ký giới hạn; cần integration riêng theo nhà cung cấp.
+4. Cài Windows SDK SignTool và Go. Lắp token / kết nối HSM của CA và
+   cài chứng thư vào `Cert:\CurrentUser\My` cho tài khoản chạy runner.
+   Đảm bảo provider cho phép ký không cần nhập PIN thủ công, hoặc chọn
+   quy trình phát hành thủ công có người xác nhận trên máy ký.
+5. Ở GitHub Environment variables (không chứa private key) cấu hình:
+   - `LAKAKEY_SIGN_CERT_THUMBPRINT`: thumbprint thực tế của chứng thư.
+   - `LAKAKEY_SIGN_CERT_SUBJECT`: **chính xác** giá trị Subject pháp lý trong
+     chứng thư (ví dụ định dạng `CN=...`, không tự điền nickname).
+6. Vào **Actions → Lakakey trusted Windows signing candidate → Run workflow**,
+   chọn nhánh `main`. Runner ký ứng dụng con trước rồi ký bộ cài cuối cùng.
+   Nếu không xác minh được chứng thư hoặc chữ ký, build dừng và không upload
+   artifact signed candidate.
+7. Tải candidate từ **Artifacts** chỉ để QA, so sánh `SHA256SUMS.txt`,
+   kiểm tra SignTool và Microsoft Defender trên Windows 10/11 sạch.
+8. Sau khi bộ gõ TSF gõ được thật, kiểm tra riêng cài / gỡ / cập nhật /
+   trường mật khẩu / Word / Chrome / Edge / Notepad / VS Code; rồi mới
+   công bố bản phát hành.
+
+## 5. Tự kiểm tra chứng thư và chữ ký trên Windows
+
+Mở PowerShell **trên máy ký**:
 
 ```powershell
-Get-AuthenticodeSignature .\LakakeyPreviewSetup.exe | Format-List Status,SignerCertificate,TimeStamperCertificate
+Get-ChildItem Cert:\CurrentUser\My |
+    Select-Object Subject, Thumbprint, NotAfter, HasPrivateKey
+
+Get-AuthenticodeSignature .\LakakeyPreviewSetup.exe |
+    Format-List Status, SignerCertificate, TimeStamperCertificate
+
 Get-FileHash .\LakakeyPreviewSetup.exe -Algorithm SHA256
 ```
 
-Chữ ký hợp lệ nghĩa là nhận dạng nhà phát hành và nội dung file được bảo vệ
-theo quy tắc Authenticode. **Không bảo đảm SmartScreen hết cảnh báo ngay**:
-Windows còn xem danh tiếng file/certificate, chính sách doanh nghiệp,
-Smart App Control và các tín hiệu bảo mật khác.
+Kết quả kỳ vọng của `Get-AuthenticodeSignature` là `Status: Valid` và
+`SignerCertificate.Subject` trùng tên pháp lý đã được CA xác minh.
+Không công bố một bản mới khi `Status` là `NotSigned`, `UnknownError`
+hoặc không có timestamp hợp lệ.
 
-Nếu vẫn bị cảnh báo dù đã ký hợp lệ, có thể gửi bản build và thông tin
-chính xác qua kênh **Microsoft Security Intelligence file submission**
-để Microsoft đánh giá. Không thể tự khẳng định được gỡ cảnh báo;
-phản hồi thuộc Microsoft.
+## 6. Nếu không có runner/thiết bị ký
 
-## Vì sao không chuyển ngay lên Microsoft Store?
+**Không cần cấu hình runner ngay.** Có thể dùng máy Windows riêng của
+người phát hành để ký và xác minh EXE *sau khi QA*, hoặc dịch vụ ký từ xa
+được CA chấp nhận. Sau đó công bố đúng file đã ký và SHA-256 qua GitHub
+Releases theo quy trình kiểm duyệt thủ công. Tuyệt đối không chuyển private
+key sang runner tạm thời chỉ để tự động hóa.
 
-Microsoft Store là một lựa chọn phân phối, không phải điều kiện bắt buộc
-để tải và cài phần mềm Windows. Với bộ gõ TSF/COM, chính sách đóng gói
-và khả năng Store chấp nhận cần được kiểm tra riêng. Không nên đăng một
-bản IME chưa QA chỉ để né SmartScreen.
+## 7. Nơi cần xác minh tiếp
 
-## Trạng thái thực tế
-
-- Workflow build v0.8 preview hiện tại tạo EXE **chưa ký**.
-- Workflow mới cho signed preview mới là **đường chuẩn bị**, chưa chạy với
-  chứng thư của Larx Vo; vì thế chưa có file `LakakeyPreviewSetup.exe`
-  được ký và xác minh danh tính nhà phát hành.
-- Windows TSF Native Alpha đã build, được kiểm thử đăng ký/gỡ COM trong CI,
-  nhưng vẫn chưa đạt kiểm thử gõ hệ thống trong máy Windows thực.
+- Nhà cấp chứng thư hoặc Microsoft phải xác nhận chính sách, mức phí,
+  và khả năng cấp cho cá nhân ở Việt Nam tại thời điểm mua.
+- Cần kiểm thử ứng dụng thật trên Windows trước khi gọi Lakakey là bộ gõ
+  thay UniKey.
+- Microsoft Store **không bắt buộc** đối với EXE độc lập.
