@@ -8,7 +8,7 @@ import (
 
 func TestNormalize(t *testing.T) {
 	x := normalize(Settings{Layout: "Microsoft", Encoding: "TCVN3", ToggleKey: "something", Mascot: "floating"})
-	if x.Layout != "Telex" || x.Encoding != "Unicode" || x.ToggleKey != "Ctrl+Shift" || x.Mascot != "Off" {
+	if x.Layout != "Telex" || x.Encoding != "Unicode" || x.ToggleKey != "Alt+Z" || x.Mascot != "Off" {
 		t.Fatalf("unsafe settings accepted: %#v", x)
 	}
 	y := normalize(Settings{Layout: "VNI", Encoding: "Unicode", ToggleKey: "Alt+Z", Mascot: "Minimal"})
