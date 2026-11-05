@@ -17,7 +17,7 @@
 
 For **source code**, see this repository; for CI artifacts, visit [Windows Preview Build](https://github.com/larxvo/lakakey/actions/workflows/windows-preview.yml).
 
-The GitHub Actions **Windows build** and **Linux C++ core tests** passed for commit `7229b56a`. This verifies compilation and core unit tests, **not** working Vietnamese input or real-device UI compatibility. Binaries are **unsigned**; use only trusted sources and do not bypass Windows warnings without assessing the risk. This is a prerelease, **not a stable IME**.
+The GitHub Actions **Windows build** and **Linux C++ core tests** passed for commit `7229b56a`. This verifies compilation and core unit tests, **not** working Vietnamese input or real-device UI compatibility. Binaries are **unsigned**. Code-signing certificates and Microsoft Store publication are **not required** to build or distribute a Windows EXE. SmartScreen can still warn for unfamiliar unsigned downloads; review the origin and SHA-256, and do not disable Windows protections. An optional future signing process does not block free development or GitHub distribution. This is a prerelease, **not a stable IME**.
 
 ## Current capabilities
 
