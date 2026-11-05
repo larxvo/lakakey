@@ -6,6 +6,18 @@
 
 > **Important release status — v0.8 PREVIEW:** The downloadable installer launches a **Windows Settings demonstration** with VN/EN controls, six accents, and a mascot setting (Full / Minimal / Off). It **does not yet type Vietnamese system-wide** in Word, Notepad, Chrome, Edge or VS Code. Keep using UniKey for typing until a real TSF IME is completed and validated. No claim of UniKey replacement is made for this preview.
 
+## Windows SmartScreen and trusted publisher signing
+
+Windows may display **"Windows protected your PC"** for the unsigned Settings-only preview.
+This is a publisher reputation warning; it is not automatically a malware verdict.
+**Do not disable SmartScreen to install an unfinished IME.**
+
+A separate manual signing pipeline has been added under
+`.github/workflows/windows-signed-candidate.yml`. It requires a properly issued
+trusted code-signing certificate; it will **not** create a trusted signed binary
+without that credential. The existing preview release remains unsigned.
+See [Vietnamese SmartScreen diagnosis and signing instructions](docs/WINDOWS_SMARTSCREEN_SIGNING_VI.md).
+
 ## 📥 Download & install on Windows
 
 **[⬇ Download LakakeyPreviewSetup.exe — Windows x64 (GitHub prerelease)](https://github.com/larxvo/lakakey/releases/download/v0.8.0-preview/LakakeyPreviewSetup.exe)**
