@@ -173,7 +173,14 @@ public:
         if (!eaten) return E_POINTER;
         *eaten = FALSE;
         if (blocked_modifiers() || is_secure(ctx)) return S_OK;
-        *eaten = (ascii_from_vk(vk) != 0 || (vk == VK_BACK && composition_ != nullptr)) ? TRUE : FALSE;
+        const bool composing = composition_ != nullptr;
+        const bool finish = vk == VK_SPACE || vk == VK_RETURN || vk == VK_TAB ||
+            vk == VK_LEFT || vk == VK_RIGHT || vk == VK_UP || vk == VK_DOWN ||
+            vk == VK_HOME || vk == VK_END || vk == VK_DELETE ||
+            vk == VK_ESCAPE || vk == VK_DECIMAL ||
+            (vk >= VK_OEM_1 && vk <= VK_OEM_3) ||
+            (vk >= VK_OEM_4 && vk <= VK_OEM_8);
+        *eaten = (ascii_from_vk(vk) != 0 || (composing && (vk == VK_BACK || finish))) ? TRUE : FALSE;
         return S_OK;
     }
     STDMETHODIMP OnTestKeyUp(ITfContext*, WPARAM, LPARAM, BOOL* eaten) override {
