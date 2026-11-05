@@ -378,10 +378,20 @@ HRESULT register_service(bool enable) {
                     dll, static_cast<ULONG>(wcslen(dll)), 0);
         }
     } else {
+        // Release the language profile before unregistering the text service.
+        // Registration can fail mid-way, so cleanup should be idempotent.
+        const HRESULT remove_hr = profiles->RemoveLanguageProfile(
+            kClsid, MAKELANGID(LANG_VIETNAMESE, SUBLANG_DEFAULT), kProfile);
+        (void)remove_hr;
         hr = profiles->Unregister(kClsid);
     }
     profiles->Release();
-    if (!enable) RegDeleteTreeW(HKEY_CURRENT_USER, clsid_key.c_str());
+    if (!enable) {
+        const LONG erased = RegDeleteTreeW(HKEY_CURRENT_USER, clsid_key.c_str());
+        if (erased != ERROR_SUCCESS && erased != ERROR_FILE_NOT_FOUND &&
+            erased != ERROR_PATH_NOT_FOUND)
+            return HRESULT_FROM_WIN32(erased);
+    }
     return hr;
 }
 } // namespace
