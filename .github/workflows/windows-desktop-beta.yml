@@ -62,7 +62,7 @@ jobs:
             LakakeyDesktopSetup.exe
             desktop/installer/payload/LakakeyDesktop.exe
             desktop/installer/payload/README.txt
-      - name: Publish clearly marked preview release
+      - name: Publish tagged beta on main after review
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
