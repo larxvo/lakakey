@@ -41,8 +41,7 @@ try {
     foreach ($item in $Files) {
         $file = (Resolve-Path -LiteralPath $item).Path
         # Timestamp so signatures can remain valid after the certificate expires.
-        & $tool.FullName sign /f $pfxPath /p $env:LAKAKEY_SIGN_PFX_PASSWORD /fd SHA256 
-            /tr 'http://timestamp.digicert.com' /td SHA256 $file
+        & $tool.FullName sign /f $pfxPath /p $env:LAKAKEY_SIGN_PFX_PASSWORD /fd SHA256 /tr 'http://timestamp.digicert.com' /td SHA256 $file
         if ($LASTEXITCODE -ne 0) { throw "signtool sign failed for $file" }
 
         $signature = Get-AuthenticodeSignature -LiteralPath $file
