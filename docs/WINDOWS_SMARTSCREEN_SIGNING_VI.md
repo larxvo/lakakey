@@ -37,7 +37,7 @@ thay thế vì mục đích khác.
   quy trình gia hạn/thu hồi, và có phát sinh chi phí dịch vụ ký hay không.
 - Khóa riêng nên là **non-exportable** qua token/HSM hoặc dịch vụ cloud ký
   được quản lý. Không gửi CCCD, mật khẩu, token PIN, khóa riêng hay PFX vào
-  ChatGPT, GitHub Issues, commit, Actions variables/logs hoặc email công khai.
+  GitHub Issues, commit, Actions variables/logs, dịch vụ trò chuyện hoặc email công khai.
 - Một số chứng thư cá nhân có thể không tương thích với mô hình runner; xác
   minh phương thức ký trước khi mua. Không thể bảo đảm giá/điều kiện hiện hành
   nếu chưa có xác nhận chính thức từ nhà cung cấp.
