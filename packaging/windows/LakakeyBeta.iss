@@ -71,6 +71,6 @@ begin
       'then open Windows Settings > Time & language > Language & region ' +
       'to look for the experimental Vietnamese input method.' + #13#10 +
       'If it does not appear or typing is unreliable, uninstall Lakakey Native TSF Alpha immediately.' +
-      #13#10 + #13#10 + 'Author: Larx Vo — vovinhlac.com',
+      'Author: Larx Vo — vovinhlac.com',
       mbInformation, MB_OK);
 end;
