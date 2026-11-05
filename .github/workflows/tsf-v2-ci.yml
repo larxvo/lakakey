@@ -45,6 +45,22 @@ jobs:
           $dll = Get-ChildItem -Path build -Filter LakakeyTsfV2.dll -Recurse | Select-Object -First 1
           if (-not $dll) { throw 'TSF prototype DLL was not created' }
           Get-FileHash $dll.FullName -Algorithm SHA256
+      - name: Smoke test COM and TSF registration/unregistration on disposable CI runner
+        shell: pwsh
+        run: |
+          $dll = (Get-ChildItem -Path build -Filter LakakeyTsfV2.dll -Recurse | Select-Object -First 1).FullName
+          $regsvr = Join-Path $env:WINDIR 'System32\regsvr32.exe'
+          $clsid = 'HKCU:\Software\Classes\CLSID\{C67C6419-3D0F-4F56-9C4B-9D8A6E74A711}\InprocServer32'
+          try {
+            & $regsvr /s $dll
+            if ($LASTEXITCODE -ne 0) { throw "TSF registration failed with exit code $LASTEXITCODE" }
+            if (!(Test-Path $clsid)) { throw "COM per-user CLSID registration missing" }
+          }
+          finally {
+            & $regsvr /s /u $dll
+            if ($LASTEXITCODE -ne 0) { throw "TSF unregister failed with exit code $LASTEXITCODE" }
+            if (Test-Path $clsid) { throw "COM per-user CLSID remains after unregister" }
+          }
       - name: Install Inno Setup compiler
         shell: pwsh
         run: |
