@@ -190,8 +190,14 @@ public:
         if (blocked_modifiers() || is_secure(ctx)) return S_OK;
         char32_t cp = ascii_from_vk(vk);
         const bool backspace = vk == VK_BACK && composition_ != nullptr;
+        // A boundary must finalize the active composition before Windows handles it.
+        // Do not swallow the boundary; the host still owns punctuation/navigation.
         const bool finish = (vk == VK_SPACE || vk == VK_RETURN || vk == VK_TAB ||
-                             vk == VK_LEFT || vk == VK_RIGHT || vk == VK_UP || vk == VK_DOWN);
+                             vk == VK_LEFT || vk == VK_RIGHT || vk == VK_UP || vk == VK_DOWN ||
+                             vk == VK_HOME || vk == VK_END || vk == VK_DELETE ||
+                             vk == VK_ESCAPE || vk == VK_DECIMAL ||
+                             (vk >= VK_OEM_1 && vk <= VK_OEM_3) ||
+                             (vk >= VK_OEM_4 && vk <= VK_OEM_8));
         if (!cp && !backspace && !(finish && composition_)) return S_OK;
         if (composition_ && composition_context_ != ctx) reset_local();
         KeyEdit* edit = new KeyEdit(this, ctx, cp, backspace, finish);
