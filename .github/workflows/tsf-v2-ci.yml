@@ -1,4 +1,4 @@
-name: Experimental Windows TSF v2 compile (no distribution)
+name: Windows Native Alpha — TSF build and installer QA
 
 on:
   push:
@@ -17,6 +17,7 @@ on:
       - 'src/**'
       - 'include/**'
       - 'CMakeLists.txt'
+      - 'packaging/windows/**'
       - '.github/workflows/tsf-v2-ci.yml'
   workflow_dispatch:
 
@@ -34,7 +35,7 @@ jobs:
         run: cmake -S . -B build -A x64 -DLAKAKEY_BUILD_TSF_V2=ON -DLAKAKEY_BUILD_EXPERIMENTAL_TSF=OFF -DLAKAKEY_BUILD_TESTS=ON
       - name: Build prototype and portable core
         shell: pwsh
-        run: cmake --build build --config Release --parallel
+        run: cmake --build build --config Release --target LakakeyTsfV2 lakakey_tests lakakey_session_tests --parallel
       - name: Execute portable core tests
         shell: pwsh
         run: ctest --test-dir build -C Release --output-on-failure
