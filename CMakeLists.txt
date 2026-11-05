@@ -63,3 +63,18 @@ if(WIN32 AND LAKAKEY_BUILD_EXPERIMENTAL_TSF)
   target_include_directories(LakakeyTsf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
   target_compile_definitions(LakakeyTsf PRIVATE UNICODE _UNICODE)
 endif()
+
+# Opt-in TSF v2 native composition prototype. Never packaged into preview setup.
+option(LAKAKEY_BUILD_TSF_V2 "Build experimental native TSF composition v2" OFF)
+if(WIN32 AND LAKAKEY_BUILD_TSF_V2)
+  add_library(LakakeyTsfV2 SHARED
+    platform/windows/tsf/lakakey_tsf_v2.cpp
+    platform/windows/tsf/lakakey_tsf.def)
+  target_link_libraries(LakakeyTsfV2 PRIVATE lakakey_core ole32 msctf advapi32)
+  target_include_directories(LakakeyTsfV2 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  target_compile_definitions(LakakeyTsfV2 PRIVATE UNICODE _UNICODE)
+  set_target_properties(LakakeyTsfV2 PROPERTIES OUTPUT_NAME LakakeyTsfV2)
+  if(MSVC)
+    target_compile_options(LakakeyTsfV2 PRIVATE /W4 /utf-8)
+  endif()
+endif()
