@@ -1,0 +1,155 @@
+//go:build windows
+
+// Lakakey Desktop Beta installer, per-user and reversible. No drivers or IME are installed.
+// Copyright (c) 2026 Larx Vo — https://vovinhlac.com
+//
+package main
+
+import (
+	"embed"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"syscall"
+	"unsafe"
+)
+
+//go:embed payload/LakakeyDesktop.exe payload/README.txt
+var packed embed.FS
+
+var messageBox = syscall.NewLazyDLL("user32.dll").NewProc("MessageBoxW")
+
+const appVersion = "0.9.0-beta"
+const regUninstall = `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\LakakeyDesktopBeta`
+const regStartup = `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
+
+func tell(text string, flags uintptr) uintptr {
+	x := syscall.StringToUTF16Ptr(text)
+	y := syscall.StringToUTF16Ptr("Lakakey Setup — Larx Vo")
+	r, _, _ := messageBox.Call(0, uintptr(unsafe.Pointer(x)), uintptr(unsafe.Pointer(y)), flags)
+	return r
+}
+func programDir() string { return filepath.Join(os.Getenv("LOCALAPPDATA"), "Programs", "Lakakey") }
+func startDir() string {
+	return filepath.Join(os.Getenv("APPDATA"), "Microsoft", "Windows", "Start Menu", "Programs")
+}
+func runHidden(name string, args ...string) error {
+	c := exec.Command(name, args...)
+	c.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	return c.Run()
+}
+func setReg(name, value string) error {
+	return runHidden("reg.exe", "add", regUninstall, "/v", name, "/t", "REG_SZ", "/d", value, "/f")
+}
+func shortcutPath() string { return filepath.Join(startDir(), "Lakakey.lnk") }
+func shortcut(target string) error {
+	// Arguments are escaped for the single-quoted PowerShell string literal.
+	quote := func(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }
+	script := "$s=(New-Object -ComObject WScript.Shell).CreateShortcut(" + quote(shortcutPath()) + ");$s.TargetPath=" + quote(target) + ";$s.WorkingDirectory=" + quote(filepath.Dir(target)) + ";$s.Description='Lakakey Desktop Beta';$s.Save()"
+	return runHidden("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
+}
+func install() {
+	warning := "Cài Lakakey Desktop v" + appVersion + "?\n\n" +
+		"QUAN TRỌNG: Đây là bản nâng cấp Settings và system tray.\n" +
+		"CHƯA PHẢI bộ gõ tiếng Việt toàn hệ thống.\n" +
+		"Không thay đổi UniKey, bàn phím hay dịch vụ nhập liệu hiện tại.\n\n" +
+		"Cài đặt miễn phí cho tài khoản Windows này?"
+	if tell(warning, 0x24) != 6 {
+		return
+	}
+	dir := programDir()
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		tell("Không thể tạo thư mục: "+err.Error(), 0x10)
+		return
+	}
+	for _, name := range []string{"LakakeyDesktop.exe", "README.txt"} {
+		data, err := packed.ReadFile("payload/" + name)
+		if err != nil {
+			tell("Bộ cài bị thiếu: "+name, 0x10)
+			return
+		}
+		target := filepath.Join(dir, name)
+		tmp := target + ".new"
+		if err = os.WriteFile(tmp, data, 0644); err != nil {
+			tell("Không ghi được file: "+err.Error(), 0x10)
+			return
+		}
+		_ = os.Remove(target)
+		if err = os.Rename(tmp, target); err != nil {
+			tell("Không thể cập nhật ứng dụng. Hãy đóng Lakakey từ system tray rồi chạy lại bộ cài.\n"+err.Error(), 0x10)
+			return
+		}
+	}
+	self, err := os.Open(os.Args[0])
+	if err != nil {
+		tell("Không thể tạo trình gỡ cài đặt.", 0x10)
+		return
+	}
+	dst, err := os.Create(filepath.Join(dir, "UninstallLakakey.exe"))
+	if err != nil {
+		_ = self.Close()
+		tell(err.Error(), 0x10)
+		return
+	}
+	_, copyErr := io.Copy(dst, self)
+	_ = dst.Close()
+	_ = self.Close()
+	if copyErr != nil {
+		tell(copyErr.Error(), 0x10)
+		return
+	}
+	uninstallCmd := "\"" + filepath.Join(dir, "UninstallLakakey.exe") + "\" --uninstall"
+	entries := map[string]string{
+		"DisplayName": "Lakakey Desktop Beta", "DisplayVersion": appVersion,
+		"Publisher": "Larx Vo", "URLInfoAbout": "https://vovinhlac.com",
+		"InstallLocation": dir, "UninstallString": uninstallCmd,
+		"DisplayIcon": filepath.Join(dir, "LakakeyDesktop.exe"),
+	}
+	for k, v := range entries {
+		if e := setReg(k, v); e != nil {
+			tell("Đã chép ứng dụng nhưng không tạo đủ uninstall registry: "+e.Error(), 0x30)
+		}
+	}
+	if err := shortcut(filepath.Join(dir, "LakakeyDesktop.exe")); err != nil {
+		tell("Đã cài chương trình nhưng không tạo được Start Menu shortcut.\nBạn vẫn có thể mở bằng file trong thư mục: "+dir, 0x30)
+	}
+	app := exec.Command(filepath.Join(dir, "LakakeyDesktop.exe"))
+	app.SysProcAttr = &syscall.SysProcAttr{HideWindow: false}
+	if err := app.Start(); err != nil {
+		tell("Đã cài, nhưng không khởi động được ứng dụng: "+err.Error(), 0x30)
+		return
+	}
+	tell("Đã cài Lakakey Desktop Beta.\n\nMở ứng dụng từ Start Menu hoặc system tray.\nKhông cài bộ gõ TSF; UniKey của bạn không bị thay đổi.\n\n© 2026 Larx Vo — vovinhlac.com", 0x40)
+}
+func uninstall() {
+	if tell("Gỡ Lakakey Desktop Beta?\n\nDữ liệu cấu hình sẽ được giữ lại để bạn có thể cài lại.\nKhông ảnh hưởng UniKey.", 0x24) != 6 {
+		return
+	}
+	dir := programDir()
+	// Prefer clean exit via tray before removal. Fail clearly for in-use files.
+	for _, name := range []string{"LakakeyDesktop.exe", "README.txt"} {
+		err := os.Remove(filepath.Join(dir, name))
+		if err != nil && !os.IsNotExist(err) {
+			tell("Vui lòng thoát Lakakey ở system tray trước khi gỡ.\n"+err.Error(), 0x30)
+			return
+		}
+	}
+	_ = os.Remove(shortcutPath())
+	_ = runHidden("reg.exe", "delete", regUninstall, "/f")
+	_ = runHidden("reg.exe", "delete", regStartup, "/v", "Lakakey", "/f")
+	tell("Đã gỡ ứng dụng. Không xóa dữ liệu người dùng.\nCó thể xóa UninstallLakakey.exe sau khi đóng hộp thoại này.", 0x40)
+}
+func main() {
+	if len(os.Args) > 1 && strings.EqualFold(os.Args[1], "--uninstall") {
+		uninstall()
+		return
+	}
+	if os.Getenv("LOCALAPPDATA") == "" || os.Getenv("APPDATA") == "" {
+		tell(fmt.Sprintf("Thiếu thư mục ứng dụng cho tài khoản Windows."), 0x10)
+		return
+	}
+	install()
+}
