@@ -1,10 +1,14 @@
+## Windows desktop beta 0.10.1
+
+The latest native Settings and tray changes are under review in [PR #1](https://github.com/larxvo/lakakey/pull/1). This beta has quiet installation, inline help/about, a compact/expanded panel and a configurable Alt+Z desktop-state switch. System-wide input integration remains in development and is not activated by this package. See the PR for the exact source and CI results.
+
 # Lakakey 🐱 — Vietnamese Input Method
 
 **Free Vietnamese typing software in development for Windows · macOS · Linux**
 
 **Created by Larx Vo** · [vovinhlac.com](https://vovinhlac.com) · © 2026 Larx Vo
 
-> **Important release status — v0.8 PREVIEW:** The downloadable installer launches a **Windows Settings demonstration** with VN/EN controls, six accents, and a mascot setting (Full / Minimal / Off). It **does not yet type Vietnamese system-wide** in Word, Notepad, Chrome, Edge or VS Code. Keep using UniKey for typing until a real TSF IME is completed and validated. No claim of UniKey replacement is made for this preview.
+> **Important release status — v0.8 PREVIEW:** The downloadable installer launches a **Windows Settings demonstration** with VN/EN controls, six accents, and a mascot setting (Full / Minimal / Off). It **does not yet type Vietnamese system-wide** in Word, Notepad, Chrome, Edge or VS Code. Keep using các bộ gõ khác for typing until a real TSF IME is completed and validated. No claim of các bộ gõ khác replacement is made for this preview.
 
 ## 📥 Download & install on Windows
 
@@ -12,7 +16,7 @@
 
 1. Download the EXE using the link above or open [Releases](https://github.com/larxvo/lakakey/releases/tag/v0.8.0-preview).
 2. Double-click `LakakeyPreviewSetup.exe`.
-3. Read the clear **preview-only warning**, then choose **Yes** if you want to install.
+3. Follow the installer instructions.
 4. The Settings preview opens. To uninstall, open **Windows Settings → Apps → Installed apps → Lakakey Desktop Preview**.
 
 For **source code**, see this repository; for CI artifacts, visit [Windows Preview Build](https://github.com/larxvo/lakakey/actions/workflows/windows-preview.yml).
