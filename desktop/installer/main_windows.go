@@ -2,7 +2,6 @@
 
 // Lakakey Desktop Beta installer, per-user and reversible. No drivers or IME are installed.
 // Copyright (c) 2026 Larx Vo — https://vovinhlac.com
-//
 package main
 
 import (
@@ -22,7 +21,7 @@ var packed embed.FS
 
 var messageBox = syscall.NewLazyDLL("user32.dll").NewProc("MessageBoxW")
 
-const appVersion = "0.9.0-beta"
+const appVersion = "0.10.1"
 const regUninstall = `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\LakakeyDesktopBeta`
 const regStartup = `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
 
@@ -52,15 +51,11 @@ func shortcut(target string) error {
 	return runHidden("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
 }
 func install() {
-	warning := "Cài Lakakey Desktop v" + appVersion + "?\n\n" +
-		"QUAN TRỌNG: Đây là bản nâng cấp Settings và system tray.\n" +
-		"CHƯA PHẢI bộ gõ tiếng Việt toàn hệ thống.\n" +
-		"Không thay đổi UniKey, bàn phím hay dịch vụ nhập liệu hiện tại.\n\n" +
-		"Cài đặt miễn phí cho tài khoản Windows này?"
-	if tell(warning, 0x24) != 6 {
-		return
-	}
 	dir := programDir()
+	if _, err := os.Stat(filepath.Join(dir, "LakakeyDesktop.exe")); err == nil {
+		// Ask the previous desktop process to quit gracefully before replacing it.
+		_ = runHidden(filepath.Join(dir, "LakakeyDesktop.exe"), "--quit")
+	}
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		tell("Không thể tạo thư mục: "+err.Error(), 0x10)
 		return
@@ -103,7 +98,7 @@ func install() {
 	}
 	uninstallCmd := "\"" + filepath.Join(dir, "UninstallLakakey.exe") + "\" --uninstall"
 	entries := map[string]string{
-		"DisplayName": "Lakakey Desktop Beta", "DisplayVersion": appVersion,
+		"DisplayName": "Lakakey", "DisplayVersion": appVersion,
 		"Publisher": "Larx Vo", "URLInfoAbout": "https://vovinhlac.com",
 		"InstallLocation": dir, "UninstallString": uninstallCmd,
 		"DisplayIcon": filepath.Join(dir, "LakakeyDesktop.exe"),
@@ -122,13 +117,14 @@ func install() {
 		tell("Đã cài, nhưng không khởi động được ứng dụng: "+err.Error(), 0x30)
 		return
 	}
-	tell("Đã cài Lakakey Desktop Beta.\n\nMở ứng dụng từ Start Menu hoặc system tray.\nKhông cài bộ gõ TSF; UniKey của bạn không bị thay đổi.\n\n© 2026 Larx Vo — vovinhlac.com", 0x40)
+	// Successful install should be quiet. The application opens itself.
 }
 func uninstall() {
-	if tell("Gỡ Lakakey Desktop Beta?\n\nDữ liệu cấu hình sẽ được giữ lại để bạn có thể cài lại.\nKhông ảnh hưởng UniKey.", 0x24) != 6 {
-		return
-	}
+	// System Settings already confirmed removal. Avoid another blocking dialog.
 	dir := programDir()
+	if _, err := os.Stat(filepath.Join(dir, "LakakeyDesktop.exe")); err == nil {
+		_ = runHidden(filepath.Join(dir, "LakakeyDesktop.exe"), "--quit")
+	}
 	// Prefer clean exit via tray before removal. Fail clearly for in-use files.
 	for _, name := range []string{"LakakeyDesktop.exe", "README.txt"} {
 		err := os.Remove(filepath.Join(dir, name))
@@ -140,7 +136,7 @@ func uninstall() {
 	_ = os.Remove(shortcutPath())
 	_ = runHidden("reg.exe", "delete", regUninstall, "/f")
 	_ = runHidden("reg.exe", "delete", regStartup, "/v", "Lakakey", "/f")
-	tell("Đã gỡ ứng dụng. Không xóa dữ liệu người dùng.\nCó thể xóa UninstallLakakey.exe sau khi đóng hộp thoại này.", 0x40)
+	// No completion popup.
 }
 func main() {
 	if len(os.Args) > 1 && strings.EqualFold(os.Args[1], "--uninstall") {
