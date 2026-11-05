@@ -46,7 +46,7 @@ jobs:
         run: |
           if (!(Test-Path 'winpreview/installer/payload/mascot.bmp')) { throw 'Missing mascot.bmp' }
           if (!(Test-Path 'winpreview/installer/payload/README_PREVIEW.txt')) { throw 'Missing README_PREVIEW.txt' }
-          go build -trimpath -ldflags '-s -w -H=windowsgui' -o winpreview/installer/payload/LakakeyPreview.exe ./winpreview/app
+          go build -trimpath -ldflags '-s -w -H=windowsgui' -o winpreview/installer/payload/LakakeyPreview.exe winpreview/app/main.go
           if ($LASTEXITCODE -ne 0) { throw 'Lakakey Preview app compilation failed.' }
 
       - name: Sign and verify the embedded app
@@ -60,7 +60,7 @@ jobs:
       - name: Create installer containing signed app
         shell: pwsh
         run: |
-          go build -trimpath -ldflags '-s -w -H=windowsgui' -o LakakeyPreviewSetup.exe ./winpreview/installer
+          go build -trimpath -ldflags '-s -w -H=windowsgui' -o LakakeyPreviewSetup.exe winpreview/installer/main.go
           if ($LASTEXITCODE -ne 0) { throw 'Lakakey preview setup build failed.' }
 
       - name: Sign and verify installer
