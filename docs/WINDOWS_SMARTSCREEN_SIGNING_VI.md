@@ -17,7 +17,16 @@ nhận phần mềm an toàn**. Không cần xuất bản qua Microsoft Store đ
 ứng dụng Win32 độc lập. Không tắt SmartScreen hoặc khuyên người dùng
 `Run anyway` cho bản IME chưa QA.
 
-## 2. Cá nhân Larx Vo cần xin chứng thư gì?
+## 2. Chứng thư là tùy chọn, không bắt buộc cho cá nhân
+
+Lakakey vẫn có thể biên dịch, phát hành bản thử nghiệm miễn phí trên GitHub
+mà không cần chứng thư ký số. Phát hành không ký phải ghi rõ trạng thái,
+kiểm tra file và không bảo đảm tránh được cảnh báo SmartScreen.
+**Không cần mua chứng thư, mở doanh nghiệp hoặc đăng Microsoft Store để
+phát triển tiếp bộ gõ.** Chỉ thực hiện các bước dưới đây nếu sau này chủ dự
+án quyết định xác minh nhà phát hành bằng chữ ký số.
+
+### Nếu tự nguyện đăng ký chứng thư trong tương lai
 
 Chọn **publicly trusted code-signing certificate** cho cá nhân, từ một CA
 được Windows tin cậy, hoặc dịch vụ ký phần mềm có xác minh danh tính cá nhân
