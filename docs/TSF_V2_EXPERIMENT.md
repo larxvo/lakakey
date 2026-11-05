@@ -2,7 +2,7 @@
 
 © 2026 Larx Vo · https://vovinhlac.com
 
-**Not a release. Not for daily use. No installer or registration is supplied.**
+**Not a public release. Not for daily use. A per-user experimental EXE is built only as a CI artifact. It has NOT passed real Windows typing tests.**
 
 This branch introduces an opt-in COM Text Services Framework (TSF) DLL experiment.
 Its purpose is to compile and then validate genuine in-app composition editing,
@@ -31,8 +31,10 @@ rather than showing a Settings demo and calling it a system IME.
    numeric VNI, punctuation, arrow-key commits, repeated keys and undo.
 6. Test apps refusing synchronous edit sessions: no lost or duplicated characters.
 7. Validate all keyboard layouts, accessibility, crash isolation and no data loss.
-8. Add an input-source picker/enable control, signed release pipeline, and a
-   reversible per-user installer only after the tests above pass.
+8. Test per-user installation, TSF profile registration, failed registration rollback,
+   and uninstall on disposable Windows 10/11 test virtual machines.
+9. Add an input-source picker, reliable TSF registration lifecycle, application QA,
+   and a signed public release only when the above tests pass.
 
 ## Known risks / incomplete work
 
@@ -45,8 +47,26 @@ rather than showing a Settings demo and calling it a system IME.
 - An application can hold its own selection state: repeated edits may break.
 - Engine rule coverage is still partial. VIQR and full English protection missing.
 - Password fields can be implemented inconsistently across applications.
-- **Do not register or deploy this DLL to end users.** It is built by
-  CI only as a compile test, with no installer and no release artifact.
+- **Do not deploy or use the experimental installer on a daily-use computer.**
+  CI builds an unsigned, unverified EXE artifact for controlled disposable VM testing.
+  It is NOT distributed as a GitHub Release. Registration can fail, and setup/uninstall
+  rollback has NOT been validated.
 
 The existing `v0.8.0-preview` remains explicitly Settings-only and is not upgraded
 to a working IME by merging this prototype.
+
+## Windows alpha package (developer-only)
+
+The build workflow compiles C++17 core and TSF DLL, runs unit tests, then uses
+Inno Setup to generate `LakakeyNativeAlphaSetup-x64.exe`. If the workflow passes,
+it is stored for 30 days under the named GitHub Actions artifact
+`Lakakey-Native-Alpha-Windows-x64-UNVERIFIED`.
+
+Install logic is per user (`PrivilegesRequired=lowest`), copies the TSF DLL to
+`%LOCALAPPDATA%\\Programs\\LakakeyNativeAlpha`, then invokes 64-bit `regsvr32`
+for registration. Uninstall invokes `regsvr32 /u` before file deletion.
+No legacy keyboard or UniKey files are modified.
+
+**Caveat:** If Windows TSF rejects per-user profile registration, or setup fails
+mid-transaction, the package may not activate or clean up fully. This is an
+unvalidated QA build, not an approved public installer. Use an expendable VM only.
