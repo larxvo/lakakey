@@ -8,15 +8,16 @@
 
 ## 📥 Download & install on Windows
 
-1. Open **[Actions → Windows Preview Build](https://github.com/larxvo/lakakey/actions/workflows/windows-preview.yml)**.
-2. Open the latest **successful** workflow run; under **Artifacts**, download `LakakeyPreview-Windows-x64`.
-3. Unzip the downloaded artifact, then double-click `LakakeyPreviewSetup.exe`.
-4. Read the preview warning and choose **Yes** to install to your user profile (`%LOCALAPPDATA%\Programs\LakakeyPreview`); no administrator permission is intended.
-5. The Settings preview opens automatically. Use **Windows Settings → Apps → Installed apps** to uninstall **Lakakey Desktop Preview**.
+**[⬇ Download LakakeyPreviewSetup.exe — Windows x64 (GitHub prerelease)](https://github.com/larxvo/lakakey/releases/download/v0.8.0-preview/LakakeyPreviewSetup.exe)**
 
-**There is no verified public stable release yet.** Action artifacts may require a GitHub login. Binaries are presently unsigned; Windows may show a SmartScreen warning. Only run installers from sources you trust, and do not bypass security warnings without verifying origin.
+1. Download the EXE using the link above or open [Releases](https://github.com/larxvo/lakakey/releases/tag/v0.8.0-preview).
+2. Double-click `LakakeyPreviewSetup.exe`.
+3. Read the clear **preview-only warning**, then choose **Yes** if you want to install.
+4. The Settings preview opens. To uninstall, open **Windows Settings → Apps → Installed apps → Lakakey Desktop Preview**.
 
-A prebuilt preview executable has also been provided as a direct chat attachment for testing; the GitHub workflow creates new installer artifacts from the checked-in Go source. These are independent builds.
+For **source code**, see this repository; for CI artifacts, visit [Windows Preview Build](https://github.com/larxvo/lakakey/actions/workflows/windows-preview.yml).
+
+The GitHub Actions **Windows build** and **Linux C++ core tests** passed for commit `7229b56a`. This verifies compilation and core unit tests, **not** working Vietnamese input or real-device UI compatibility. Binaries are **unsigned**; use only trusted sources and do not bypass Windows warnings without assessing the risk. This is a prerelease, **not a stable IME**.
 
 ## Current capabilities
 
