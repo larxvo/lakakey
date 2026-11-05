@@ -1,0 +1,102 @@
+name: Lakakey trusted Windows signing candidate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signed-preview:
+    name: Sign reviewed preview using nonexportable publisher certificate
+    # IMPORTANT: only register a dedicated, access-controlled Windows x64 signing runner.
+    # Do not use a shared public runner: the identity-verified key must stay in its
+    # hardware-backed key store or the publisher's approved signing system.
+    runs-on: [self-hosted, Windows, X64, lakakey-signing]
+    environment: lakakey-production-signing
+    timeout-minutes: 30
+    steps:
+      - name: Checkout reviewed source without persistent credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Verify branch is the reviewed default branch
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -ne 'refs/heads/main') {
+            throw 'Signing refused: review and merge the signing pipeline before dispatching from main.'
+          }
+
+      - name: Validate signing environment and tools
+        shell: pwsh
+        env:
+          LAKAKEY_SIGN_CERT_THUMBPRINT: ${{ vars.LAKAKEY_SIGN_CERT_THUMBPRINT }}
+          LAKAKEY_SIGN_CERT_SUBJECT: ${{ vars.LAKAKEY_SIGN_CERT_SUBJECT }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:LAKAKEY_SIGN_CERT_THUMBPRINT) -or
+              [string]::IsNullOrWhiteSpace($env:LAKAKEY_SIGN_CERT_SUBJECT)) {
+            throw 'Configure release environment with trusted code-signing certificate thumbprint and exact legal Subject.'
+          }
+          go version
+          if ($LASTEXITCODE -ne 0) { throw 'Go compiler missing from Windows signing runner.' }
+
+      - name: Compile app on trusted Windows signing runner
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'winpreview/installer/payload/mascot.bmp')) { throw 'Missing mascot.bmp' }
+          if (!(Test-Path 'winpreview/installer/payload/README_PREVIEW.txt')) { throw 'Missing README_PREVIEW.txt' }
+          go build -trimpath -ldflags '-s -w -H=windowsgui' -o winpreview/installer/payload/LakakeyPreview.exe winpreview/app/main.go
+          if ($LASTEXITCODE -ne 0) { throw 'Lakakey Preview app compilation failed.' }
+
+      - name: Sign and verify the embedded app
+        shell: pwsh
+        env:
+          LAKAKEY_SIGN_CERT_THUMBPRINT: ${{ vars.LAKAKEY_SIGN_CERT_THUMBPRINT }}
+          LAKAKEY_SIGN_CERT_SUBJECT: ${{ vars.LAKAKEY_SIGN_CERT_SUBJECT }}
+        run: |
+          ./scripts/windows/Sign-LakakeyRelease.ps1 -Files 'winpreview/installer/payload/LakakeyPreview.exe'
+
+      - name: Create installer containing signed app
+        shell: pwsh
+        run: |
+          go build -trimpath -ldflags '-s -w -H=windowsgui' -o LakakeyPreviewSetup.exe winpreview/installer/main.go
+          if ($LASTEXITCODE -ne 0) { throw 'Lakakey preview setup build failed.' }
+
+      - name: Sign and verify installer
+        shell: pwsh
+        env:
+          LAKAKEY_SIGN_CERT_THUMBPRINT: ${{ vars.LAKAKEY_SIGN_CERT_THUMBPRINT }}
+          LAKAKEY_SIGN_CERT_SUBJECT: ${{ vars.LAKAKEY_SIGN_CERT_SUBJECT }}
+        run: |
+          ./scripts/windows/Sign-LakakeyRelease.ps1 -Files 'LakakeyPreviewSetup.exe'
+
+      - name: Generate integrity manifest
+        shell: pwsh
+        run: |
+          $files = @('LakakeyPreviewSetup.exe', 'winpreview/installer/payload/LakakeyPreview.exe')
+          $manifest = foreach ($file in $files) {
+            $sha = (Get-FileHash -Algorithm SHA256 -LiteralPath $file).Hash.ToLowerInvariant()
+            "$sha  $file"
+          }
+          $manifest | Set-Content -Encoding ascii SHA256SUMS.txt
+          @(
+            'Lakakey signed candidate — Settings preview only, NOT a Vietnamese IME.'
+            "Git commit: $env:GITHUB_SHA"
+            "Workflow run: $env:GITHUB_RUN_ID"
+            'Publisher identity requires a real individual code-signing certificate.'
+            'Authenticode signing does not guarantee immediate SmartScreen reputation.'
+            'Larx Vo — https://vovinhlac.com'
+          ) | Set-Content -Encoding utf8 RELEASE_INFO.txt
+
+      - name: Upload review-only signed candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lakakey-Verified-Publisher-Signed-Preview-Candidate
+          path: |
+            LakakeyPreviewSetup.exe
+            SHA256SUMS.txt
+            RELEASE_INFO.txt
+          if-no-files-found: error
+          retention-days: 14
+      # No public release until the binary, publisher, functional QA and AV testing pass.
