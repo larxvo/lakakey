@@ -83,7 +83,6 @@ class Service final : public ITfTextInputProcessor,
     DWORD sink_cookie_ = TF_INVALID_COOKIE;
     TfClientId client_ = TF_CLIENTID_NULL;
     lakakey::Engine engine_;
-    bool terminating_ = false;
 public:
     Service() { ++g_objects; }
     ~Service() { Deactivate(); --g_objects; }
@@ -202,7 +201,7 @@ public:
         edit->Release();
         // Fail open: never drop a key when TSF declines a synchronous edit session.
         if (cp || backspace)
-            *eaten = SUCCEEDED(request) && SUCCEEDED(session_result) ? TRUE : FALSE;
+            *eaten = SUCCEEDED(request) && session_result == S_OK ? TRUE : FALSE;
         // Finish leaves the delimiter/navigation key to the host after committing.
         return S_OK;
     }
@@ -258,9 +257,7 @@ public:
         if (!composition_) { engine_.reset(); return S_OK; }
         ITfComposition* comp = composition_;
         comp->AddRef(); // callbacks may release the service's reference
-        terminating_ = true;
         HRESULT hr = comp->EndComposition(cookie);
-        terminating_ = false;
         comp->Release();
         if (SUCCEEDED(hr)) reset_local();
         return hr;
