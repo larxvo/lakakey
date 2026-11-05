@@ -41,9 +41,9 @@ jobs:
       - name: Compile preview source without signing or publishing
         shell: pwsh
         run: |
-          go build -trimpath -ldflags '-s -w -H=windowsgui' -o winpreview/installer/payload/LakakeyPreview.exe ./winpreview/app
+          go build -trimpath -ldflags '-s -w -H=windowsgui' -o winpreview/installer/payload/LakakeyPreview.exe winpreview/app/main.go
           if ($LASTEXITCODE -ne 0) { throw 'App compilation failed' }
-          go build -trimpath -ldflags '-s -w -H=windowsgui' -o LakakeyPreviewSetup.exe ./winpreview/installer
+          go build -trimpath -ldflags '-s -w -H=windowsgui' -o LakakeyPreviewSetup.exe winpreview/installer/main.go
           if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed' }
           if ((Get-Item LakakeyPreviewSetup.exe).Length -lt 100000) { throw 'Invalid EXE' }
       # No signing secrets used; no artifacts published to end users.
