@@ -9,6 +9,7 @@ on:
       - 'src/**'
       - 'include/**'
       - 'CMakeLists.txt'
+      - 'packaging/windows/**'
       - '.github/workflows/tsf-v2-ci.yml'
   pull_request:
     paths:
@@ -43,5 +44,28 @@ jobs:
           $dll = Get-ChildItem -Path build -Filter LakakeyTsfV2.dll -Recurse | Select-Object -First 1
           if (-not $dll) { throw 'TSF prototype DLL was not created' }
           Get-FileHash $dll.FullName -Algorithm SHA256
-      # Intentionally no upload-artifact and no GitHub Release.
-      # This DLL is a development prototype, not a safe Windows installer.
+      - name: Install Inno Setup compiler
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup installation failed' }
+      - name: Package per-user alpha EXE (not a public release)
+        shell: pwsh
+        run: |
+          $dll = (Get-ChildItem -Path build -Filter LakakeyTsfV2.dll -Recurse | Select-Object -First 1).FullName
+          if (-not $dll) { throw 'Missing TSF DLL' }
+          $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $compiler)) { throw 'ISCC.exe missing' }
+          & $compiler "/DSourceDll=$dll" packaging/windows/LakakeyBeta.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed' }
+          $setup = Get-Item dist/LakakeyNativeAlphaSetup-x64.exe
+          if ($setup.Length -lt 100000) { throw 'Invalid setup EXE size' }
+          Get-FileHash $setup.FullName -Algorithm SHA256 | Format-List
+      - name: Store opt-in alpha installer as Actions artifact only
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lakakey-Native-Alpha-Windows-x64-UNVERIFIED
+          path: dist/LakakeyNativeAlphaSetup-x64.exe
+          if-no-files-found: error
+          retention-days: 30
+      # NO public release or auto-update until real Windows app tests pass.
