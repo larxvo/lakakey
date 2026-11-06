@@ -41,9 +41,9 @@ bool is_secure(ITfContext* ctx) {
     TF_STATUS status{};
     if (FAILED(ctx->GetStatus(&status))) return true;
     // These are SDK status constants, not preprocessor feature macros.
-    // Treat hidden/transitory contexts conservatively. This remains a
+    // Treat transitory contexts conservatively. This remains a
     // supplementary check, not proof of protection across browser frameworks.
-    if (status.dwStaticFlags & (TF_SS_TRANSITORY | TF_SS_NOHIDDENTEXT))
+    if (status.dwStaticFlags & TF_SS_TRANSITORY)
         return true;
     // A conventional Win32 EDIT field exposes the password style.
     // Do not inspect its contents; only the window style is queried.
