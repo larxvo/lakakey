@@ -42,10 +42,17 @@ jobs:
         run: |
           cmake -S . -B build-win -A x64 -DLAKAKEY_BUILD_TESTS=ON -DLAKAKEY_BUILD_TSF_V2=ON -DLAKAKEY_BUILD_EXPERIMENTAL_TSF=OFF
           if ($LASTEXITCODE -ne 0) { throw 'Native configuration failed' }
-          cmake --build build-win --config Release --target lakakey_tests lakakey_session_tests lakakey_contract_tests lakakey_tsf_policy_tests LakakeyTsfV2 LakakeyTsfSmokeHost LakakeyTsfComSmoke LakakeyKeyboardLayoutSmoke
+          cmake --build build-win --config Release --target lakakey_tests lakakey_session_tests lakakey_contract_tests lakakey_tsf_policy_tests LakakeyTsfV2 LakakeyTsfSmokeHost LakakeyTsfComSmoke LakakeyKeyboardLayoutSmoke LakakeyTsfRegistrationSmoke
           if ($LASTEXITCODE -ne 0) { throw 'Native build failed' }
           ctest --test-dir build-win -C Release --output-on-failure
           if ($LASTEXITCODE -ne 0) { throw 'Core regression tests failed' }
+      - name: Ephemeral TSF registration and cleanup smoke
+        shell: pwsh
+        run: |
+          $smoke = (Resolve-Path 'build-win/Release/LakakeyTsfRegistrationSmoke.exe').Path
+          $dll = (Resolve-Path 'build-win/Release/LakakeyTsfV2.dll').Path
+          & $smoke $dll '--ephemeral-runner'
+          if ($LASTEXITCODE -ne 0) { throw 'TSF profile registration test failed; no user release allowed' }
       - name: Compile Windows app and per-user setup
         shell: pwsh
         run: |
@@ -100,4 +107,5 @@ jobs:
             build-win/Release/LakakeyTsfSmokeHost.exe
             build-win/Release/LakakeyTsfComSmoke.exe
             build-win/Release/LakakeyKeyboardLayoutSmoke.exe
+            build-win/Release/LakakeyTsfRegistrationSmoke.exe
 # Stable releases must pass native OS QA and publisher signing; no automatic release.
