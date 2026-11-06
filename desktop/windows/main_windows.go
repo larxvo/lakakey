@@ -120,6 +120,7 @@ const (
 	ID_GUIDE             = 110
 	ID_VN                = 111
 	ID_MASCOT            = 112
+	ID_DIAGNOSTICS       = 113
 	ID_SPELL             = 201
 	ID_FREE              = 202
 	ID_TONE              = 203
@@ -289,7 +290,7 @@ func createControls() {
 	expandedHandles = append(expandedHandles, check("Theo từng ứng dụng", ID_PERAPP, 396, 373, 163))
 	expandedHandles = append(expandedHandles, label("Mascot", 396, 411, 154))
 	expandedHandles = append(expandedHandles, combo(ID_MASCOT, 396, 439, 145, []string{"Off", "Minimal", "Full"}))
-	expandedHandles = append(expandedHandles, label("Tùy biến hình đại diện", 396, 480, 163))
+	expandedHandles = append(expandedHandles, button("Trạng thái native", ID_DIAGNOSTICS, 396, 480, 145))
 	// Inline guide / about: no disruptive modal dialogs.
 	detailLabel = clientControl("STATIC", "", 0, 0, 27, 303, 518, 212)
 	// Hide unfinished controls instead of offering options that have no effect.
@@ -403,10 +404,15 @@ func onCommand(wp uintptr) {
 		} else {
 			cfg.Expanded = !cfg.Expanded
 		}
-	case ID_ABOUT:
+	case ID_DIAGNOSTICS:
+        detailMode = "diagnostics"
+        cfg.Expanded = true
+        setText(detailLabel, nativeStatusText())
+        changed = false
+    case ID_ABOUT:
 		detailMode = "about"
 		cfg.Expanded = true
-		setText(detailLabel, "LAKAKEY  ·  Windows Desktop\r\n\r\nỨng dụng nhập liệu tiếng Việt\r\nPhiên bản 0.12.0\r\n\r\nTác giả: Larx Vo\r\nWebsite: https://vovinhlac.com\r\n\r\nMiễn phí · Hoạt động cục bộ · Không tài khoản")
+		setText(detailLabel, "LAKAKEY  ·  Windows Desktop\r\n\r\nỨng dụng nhập liệu tiếng Việt\r\nPhiên bản 0.13.0\r\n\r\nTác giả: Larx Vo\r\nWebsite: https://vovinhlac.com\r\n\r\nMiễn phí · Hoạt động cục bộ · Không tài khoản")
 		changed = false
 	case ID_GUIDE:
 		detailMode = "guide"
