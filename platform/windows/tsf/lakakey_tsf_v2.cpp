@@ -38,7 +38,16 @@ bool blocked_modifiers() {
 bool is_secure(ITfContext* ctx) {
     TF_STATUS s{};
     // Fail closed when the host does not expose its input security status.
-    return !ctx || FAILED(ctx->GetStatus(&s)); // Password detection is not guaranteed yet.
+    if (!ctx || FAILED(ctx->GetStatus(&s))) return true;
+    // Host-provided flags are advisory; an end-to-end secure-field gate is
+    // still needed before a production IME release.
+#ifdef TF_SS_PASSWORD
+    if (s.dwStaticFlags & TF_SS_PASSWORD) return true;
+#endif
+#ifdef TF_SS_TRANSITORY
+    if (s.dwStaticFlags & TF_SS_TRANSITORY) return true;
+#endif
+    return false;
 }
 char32_t ascii_from_vk(WPARAM vk) {
     if (vk >= 'A' && vk <= 'Z') {
@@ -53,6 +62,29 @@ char32_t ascii_from_vk(WPARAM vk) {
     if (vk >= VK_NUMPAD0 && vk <= VK_NUMPAD9)
         return static_cast<char32_t>('0' + vk - VK_NUMPAD0);
     return 0; // Unknown layouts: let the application handle the key.
+}
+
+// Per-user preference bridge from LakakeyDesktop. Only two DWORD values are
+// read. This service does not read or write user keystroke history.
+void read_input_preferences(lakakey::Settings& settings) {
+    HKEY key=nullptr;
+    constexpr wchar_t path[]=L"Software\\LarxVo\\Lakakey\\Input";
+    if (RegOpenKeyExW(HKEY_CURRENT_USER,path,0,KEY_QUERY_VALUE,&key)!=ERROR_SUCCESS) return;
+    auto query_dword=[&](const wchar_t* name, DWORD* value)->bool {
+        DWORD kind=0, size=sizeof(DWORD), temp=0;
+        const LONG code=RegQueryValueExW(key,name,nullptr,&kind,
+                           reinterpret_cast<LPBYTE>(&temp),&size);
+        if(code!=ERROR_SUCCESS || kind!=REG_DWORD || size!=sizeof(DWORD))return false;
+        *value=temp;return true;
+    };
+    DWORD enabled=1;
+    DWORD scheme=0;
+    if(query_dword(L"Enabled",&enabled))settings.enabled=(enabled!=0);
+    if(query_dword(L"Scheme",&scheme)) {
+        if(scheme==0)settings.scheme=lakakey::Scheme::Telex;
+        else if(scheme==1)settings.scheme=lakakey::Scheme::Vni;
+    }
+    RegCloseKey(key);
 }
 
 class Service;
@@ -109,6 +141,15 @@ public:
         engine_.reset();
         release(composition_);
         release(composition_context_);
+    }
+    void refresh_input_preferences() {
+        // Never discard an in-progress composition to apply a preference.
+        if (composition_) return;
+        lakakey::Settings requested=engine_.settings();
+        read_input_preferences(requested);
+        const auto current=engine_.settings();
+        if (current.enabled!=requested.enabled || current.scheme!=requested.scheme)
+            engine_.set_settings(requested);
     }
     STDMETHODIMP Activate(ITfThreadMgr* mgr, TfClientId client) override {
         if (!mgr) return E_POINTER;
@@ -176,6 +217,8 @@ public:
     STDMETHODIMP OnTestKeyDown(ITfContext* ctx, WPARAM vk, LPARAM, BOOL* eaten) override {
         if (!eaten) return E_POINTER;
         *eaten = FALSE;
+        refresh_input_preferences();
+        if (!engine_.settings().enabled) return S_OK;
         if (blocked_modifiers() || is_secure(ctx)) return S_OK;
         const bool composing = composition_ != nullptr;
         const bool finish = vk == VK_SPACE || vk == VK_RETURN || vk == VK_TAB ||
@@ -198,6 +241,8 @@ public:
     STDMETHODIMP OnKeyDown(ITfContext* ctx, WPARAM vk, LPARAM, BOOL* eaten) override {
         if (!eaten) return E_POINTER;
         *eaten = FALSE;
+        refresh_input_preferences();
+        if (!engine_.settings().enabled) return S_OK;
         if (blocked_modifiers() || is_secure(ctx)) return S_OK;
         char32_t cp = ascii_from_vk(vk);
         const bool backspace = vk == VK_BACK && composition_ != nullptr;
