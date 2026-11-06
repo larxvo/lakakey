@@ -354,6 +354,10 @@ func refresh() {
 func save() {
 	if err := writeSettings(cfg); err != nil {
 		setText(statusLabel, "Không lưu được cấu hình: "+err.Error())
+		return
+	}
+	if err := publishRuntimeMode(cfg); err != nil {
+		setText(statusLabel, "Chưa đồng bộ được chế độ nhập liệu")
 	}
 }
 func startupRegistration(on bool) {
@@ -684,6 +688,7 @@ func main() {
 	}
 	taskbarCreated, _, _ = registerWindowMsg.Call(strPtr("TaskbarCreated"))
 	cfg = readSettings()
+	_ = publishRuntimeMode(cfg)
 	if err := writeSettings(cfg); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
