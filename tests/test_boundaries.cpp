@@ -41,7 +41,7 @@ int main() {
     check("ddoof;", "đồ;");
     check("a1.", "á.", {Scheme::Vni,ToneStyle::Modern,true});
     check("tie6ng1, ", "tiếng, ", {Scheme::Vni,ToneStyle::Modern,true});
-    check("hello world!", "hello world!");
+    check("HTML CSS!", "HTML CSS!");
     // At the start of a field, delimiter keys should pass through the host
     // (this engine-only test verifies the equivalent textual result).
     check(" .", " .");
