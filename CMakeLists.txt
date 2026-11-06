@@ -88,6 +88,12 @@ if(WIN32 AND LAKAKEY_BUILD_TSF_V2)
   target_include_directories(LakakeyTsfV2 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
   target_compile_definitions(LakakeyTsfV2 PRIVATE UNICODE _UNICODE)
   set_target_properties(LakakeyTsfV2 PROPERTIES OUTPUT_NAME LakakeyTsfV2)
+  # Explicitly invoked only in disposable Windows CI; never ordinary CTest.
+  add_executable(LakakeyTsfRegistrationSmoke tests/windows/tsf_registration_smoke.cpp)
+  target_link_libraries(LakakeyTsfRegistrationSmoke PRIVATE advapi32)
+  if(MSVC)
+    target_compile_options(LakakeyTsfRegistrationSmoke PRIVATE /W4 /utf-8)
+  endif()
   # Verify physical-key translation against an actual Windows keyboard layout.
   add_executable(LakakeyKeyboardLayoutSmoke tests/windows/keyboard_layout_smoke.cpp)
   target_include_directories(LakakeyKeyboardLayoutSmoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
