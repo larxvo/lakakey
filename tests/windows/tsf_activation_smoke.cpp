@@ -35,27 +35,40 @@ int wmain(int argc, wchar_t** argv) {
     TfClientId client = TF_CLIENTID_NULL;
     bool mgr_active = false;
     bool service_active = false;
+    const wchar_t* stage = L"CreateThreadMgr";
     HRESULT result = CoCreateInstance(CLSID_TF_ThreadMgr, nullptr, CLSCTX_INPROC_SERVER,
                                       IID_ITfThreadMgr, reinterpret_cast<void**>(&mgr));
-    if (SUCCEEDED(result))
+    if (SUCCEEDED(result)) {
+        stage = L"ThreadMgr.Activate";
         result = mgr->Activate(&client);
+    }
     if (SUCCEEDED(result)) mgr_active = true;
-    if (SUCCEEDED(result))
+    if (SUCCEEDED(result)) {
+        stage = L"DllGetClassObject";
         result = create(kClsid, IID_IClassFactory, reinterpret_cast<void**>(&factory));
-    if (SUCCEEDED(result))
+    }
+    if (SUCCEEDED(result)) {
+        stage = L"ClassFactory.CreateInstance";
         result = factory->CreateInstance(nullptr, IID_ITfTextInputProcessor,
                                          reinterpret_cast<void**>(&service));
-    if (SUCCEEDED(result))
-        result = service->Activate(mgr, client);
-    if (SUCCEEDED(result)) service_active = true;
-    if (SUCCEEDED(result))
-        result = service->QueryInterface(IID_ITfKeyEventSink, reinterpret_cast<void**>(&keys));
+    }
     if (SUCCEEDED(result)) {
+        stage = L"TextInputProcessor.Activate";
+        result = service->Activate(mgr, client);
+    }
+    if (SUCCEEDED(result)) service_active = true;
+    if (SUCCEEDED(result)) {
+        stage = L"QueryInterface.ITfKeyEventSink";
+        result = service->QueryInterface(IID_ITfKeyEventSink, reinterpret_cast<void**>(&keys));
+    }
+    if (SUCCEEDED(result)) {
+        stage = L"ITfKeyEventSink.OnTestKeyDown";
         BOOL eaten = TRUE;
         result = keys->OnTestKeyDown(nullptr, 'A', 0, &eaten);
         if (SUCCEEDED(result) && eaten) result = E_UNEXPECTED;
         if (SUCCEEDED(result)) {
             eaten = TRUE;
+            stage = L"ITfKeyEventSink.OnKeyDown";
             result = keys->OnKeyDown(nullptr, 'A', 0, &eaten);
             if (SUCCEEDED(result) && eaten) result = E_UNEXPECTED;
         }
@@ -69,7 +82,7 @@ int wmain(int argc, wchar_t** argv) {
     HRESULT remaining = can_unload();
     FreeLibrary(dll);
     CoUninitialize();
-    if (FAILED(result)) return fail(L"TSF manager activation or key sink", result);
+    if (FAILED(result)) return fail(stage, result);
     if (remaining != S_OK) return fail(L"COM references after cleanup", remaining);
     std::wcout << L"TSF activation smoke: PASS (thread manager, key sink, cleanup)\n";
     return 0;
