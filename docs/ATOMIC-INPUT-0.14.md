@@ -17,15 +17,16 @@ hosts need not call `OnKeyDown` after `OnTestKeyDown` declines the key.
 5. The host text range is updated and the composition is ended.
 6. If the edit session is rejected, the TSF adapter does not consume the key.
 
-Other navigation keys and shortcuts remain the host's responsibility;
-composing through Enter, punctuation and caret movement still requires
-manual and framework-specific testing.
+Printable ASCII punctuation uses the same native commit transaction when a
+composition is active; otherwise punctuation stays with the host. Enter,
+Tab, cursor movement and other navigation remain the host's responsibility
+and still require application-specific verification.
 
 ## Verification / regression coverage
 
 - `tests/test_tsf_policy.cpp`: Space is consumed only with active, nonempty
   composition and an enabled, nonsecure, matching input context.
-- `tests/test_typing_pipeline.cpp`: Host-neutral Telex/VNI transaction
+- `tests/test_typing_pipeline.cpp`: Host-neutral Telex/VNI/punctuation transaction
   simulation, word+separator, tone undo, password/disabled pass-through,
   shortcut bypass and focus reset.
 - Existing core tests, Windows keyboard layout checks, TSF COM smoke and
