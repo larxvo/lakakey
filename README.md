@@ -4,25 +4,28 @@
 
 Created by **Larx Vo** · [vovinhlac.com](https://vovinhlac.com) · Copyright © 2026.
 
-## Development status — 0.12 Native Input Integration
+## Development status — 0.13 Windows Compatibility
 
 Lakakey is under active development. Its portable C++ engine includes baseline Telex/VNI support, Unicode handling and unit tests. A native Windows desktop app provides Settings, system tray, hotkeys and local preferences. A Windows Text Services Framework (TSF) implementation is being tested separately.
 
 **The current Windows desktop installer does not activate system-wide Vietnamese input.** The native TSF DLL is experimental and is not installed by the public desktop setup. Compatibility with Notepad, Office, browsers and development editors remains a release gate, not a completed claim.
 
-## What's in 0.12
+## What's in 0.13
 
 - Shared, deterministic TSF key-routing contract for probe and edit paths; punctuation/navigation remain available to the host.
 - Fail-open handling for rejected synchronous edit sessions.
 - C++ policy tests for mode, modifiers, focus, backspace and context state.
 - Faster Windows tray → input-preference bridge, using native registry calls without spawning `reg.exe` on each change.
 - Optional native test host with text, multiline and password fields.
+- Windows keyboard-layout-aware character translation (rather than assuming one physical layout).
+- TSF COM smoke validation of class factory and interface release, without installing the text service.
+- Best-effort composition finalization on focus loss and an inline native-registration diagnostics screen.
 - Windows x64 executable builds, separate research-only TSF build artifacts and CI configuration.
 - Quiet, locally stored settings; no login, marketing popups or typed-text telemetry.
 
 ## Download and run desktop development builds
 
-Use [GitHub Actions](https://github.com/larxvo/lakakey/actions/workflows/windows-desktop-beta.yml) after a **successful** run on the relevant branch; download the `Lakakey-0.12-Windows-x64-Dev` artifact. Artifacts may require an authenticated GitHub session. This is an **unsigned development build**: verify its origin and SHA-256 and do not bypass security warnings without assessing the risk.
+Use [GitHub Actions](https://github.com/larxvo/lakakey/actions/workflows/windows-desktop-beta.yml) after a **successful** run on the relevant branch; download the `Lakakey-0.13-Windows-x64-Dev` artifact. Artifacts may require an authenticated GitHub session. This is an **unsigned development build**: verify its origin and SHA-256 and do not bypass security warnings without assessing the risk.
 
 When available, run `LakakeyDesktopSetup.exe`. It installs the desktop settings/tray application for the current user and provides an uninstall entry. The experimental TSF DLL remains separate.
 
@@ -37,7 +40,8 @@ When available, run `LakakeyDesktopSetup.exe`. It installs the desktop settings/
 | `desktop/windows/` | Native Windows Settings, tray, local preferences |
 | `desktop/installer/` | Per-user Windows desktop installer |
 | `tests/` | Core, session, Unicode and TSF policy regression tests |
-| `docs/NATIVE-INPUT-0.12.md` | Verification status and Windows QA checklist |
+| `docs/WINDOWS-COMPAT-0.13.md` | Windows interoperability matrix and release gates |
+| `docs/NATIVE-INPUT-0.12.md` | Previous milestone QA criteria |
 
 ## Building and testing
 
@@ -61,7 +65,7 @@ Experimental Windows native adapter requires Windows SDK and Visual Studio/MSVC:
 
 ```powershell
 cmake -S . -B build-win -A x64 -DLAKAKEY_BUILD_TSF_V2=ON -DLAKAKEY_BUILD_TESTS=ON
-cmake --build build-win --config Release --target LakakeyTsfV2 LakakeyTsfSmokeHost lakakey_tsf_policy_tests
+cmake --build build-win --config Release --target LakakeyTsfV2 LakakeyTsfSmokeHost LakakeyTsfComSmoke LakakeyKeyboardLayoutSmoke lakakey_tsf_policy_tests
 ctest --test-dir build-win -C Release --output-on-failure
 ```
 

@@ -12,6 +12,6 @@ cmake --build build --config Release
 .\build\Release\LakakeySettings.exe
 ```
 
-**Not a system input method:** This app does not register TSF, intercept keyboard events, or change typing in other programs. The VN/EN control is a settings-state preview only. A Windows TSF text service is required for actual typing. Do not distribute as a UniKey replacement yet.
+**Not a system input method:** This app does not register TSF, intercept keyboard events, or change typing in other programs. The VN/EN control is a settings-state preview only. A Windows TSF text service is required for actual typing. Do not publish as a verified system input method until compatibility testing passes.
 
 Author: Larx Vo · https://vovinhlac.com. Free to use; author website optional.

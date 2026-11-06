@@ -9,6 +9,7 @@
 #include <utility>
 #include "lakakey_engine.h"
 #include "lakakey_tsf_policy.h"
+#include "lakakey_win_key_translation.h"
 
 namespace {
 constexpr CLSID kClsid = {0xc67c6419,0x3d0f,0x4f56,{0x9c,0x4b,0x9d,0x8a,0x6e,0x74,0xa7,0x11}};
@@ -57,21 +58,6 @@ bool is_secure(ITfContext* ctx) {
     }
     return false;
 }
-char32_t ascii_from_vk(WPARAM vk) {
-    if (vk >= 'A' && vk <= 'Z') {
-        const bool upper = ((GetKeyState(VK_SHIFT) & 0x8000) != 0) !=
-                           ((GetKeyState(VK_CAPITAL) & 1) != 0);
-        return static_cast<char32_t>(upper ? vk : vk + 32);
-    }
-    if (vk >= '0' && vk <= '9') {
-        if (GetKeyState(VK_SHIFT) & 0x8000) return 0;
-        return static_cast<char32_t>(vk);
-    }
-    if (vk >= VK_NUMPAD0 && vk <= VK_NUMPAD9)
-        return static_cast<char32_t>('0' + vk - VK_NUMPAD0);
-    return 0; // Unknown layouts: let the application handle the key.
-}
-
 // Per-user preference bridge from LakakeyDesktop. Only two DWORD values are
 // read. This service does not read or write user keystroke history.
 void read_input_preferences(lakakey::Settings& settings) {
@@ -159,6 +145,22 @@ public:
         if (current.enabled!=requested.enabled || current.scheme!=requested.scheme)
             engine_.set_settings(requested);
     }
+    // Try to end the live host composition before a focus/context switch.
+    // No key is consumed here; if the host denies a synchronous session,
+    // abandon local state rather than replaying stale text into the next field.
+    void retire_on_focus_change() {
+        if (composition_ && composition_context_ && client_ != TF_CLIENTID_NULL) {
+            ITfContext* previous = composition_context_;
+            previous->AddRef();
+            auto* edit = new KeyEdit(this, previous, U'\0', lakakey::KeyAction::Finalize);
+            HRESULT edit_result = E_FAIL;
+            (void)previous->RequestEditSession(client_, edit,
+                             TF_ES_SYNC | TF_ES_READWRITE, &edit_result);
+            edit->Release();
+            previous->Release();
+        }
+        reset_local();
+    }
     STDMETHODIMP Activate(ITfThreadMgr* mgr, TfClientId client) override {
         if (!mgr) return E_POINTER;
         Deactivate();
@@ -198,17 +200,17 @@ public:
         return S_OK;
     }
     STDMETHODIMP OnSetFocus(BOOL foreground) override {
-        if (!foreground) reset_local();
+        if (!foreground) retire_on_focus_change();
         return S_OK;
     }
     STDMETHODIMP OnInitDocumentMgr(ITfDocumentMgr*) override { return S_OK; }
-    STDMETHODIMP OnUninitDocumentMgr(ITfDocumentMgr*) override { reset_local(); return S_OK; }
+    STDMETHODIMP OnUninitDocumentMgr(ITfDocumentMgr*) override { retire_on_focus_change(); return S_OK; }
     STDMETHODIMP OnSetFocus(ITfDocumentMgr* current, ITfDocumentMgr* previous) override {
-        if (current != previous) reset_local();
+        if (current != previous) retire_on_focus_change();
         return S_OK;
     }
-    STDMETHODIMP OnPushContext(ITfContext*) override { reset_local(); return S_OK; }
-    STDMETHODIMP OnPopContext(ITfContext*) override { reset_local(); return S_OK; }
+    STDMETHODIMP OnPushContext(ITfContext*) override { retire_on_focus_change(); return S_OK; }
+    STDMETHODIMP OnPopContext(ITfContext*) override { retire_on_focus_change(); return S_OK; }
     STDMETHODIMP OnCompositionTerminated(TfEditCookie, ITfComposition* ended) override {
         if (ended == composition_) {
             // Do not release the same composition twice from an EndComposition callback.
@@ -231,10 +233,15 @@ public:
             vk == VK_DECIMAL || (vk >= VK_OEM_1 && vk <= VK_OEM_3) ||
             (vk >= VK_OEM_4 && vk <= VK_OEM_8);
     }
-    lakakey::KeyPlan route(ITfContext* ctx, WPARAM vk) {
+    struct RoutedKey {
+        lakakey::KeyPlan plan;
+        char32_t character = U'\0';
+    };
+    RoutedKey route(ITfContext* ctx, WPARAM vk, LPARAM key_data) {
         refresh_input_preferences();
         const bool active = composition_ != nullptr;
-        return lakakey::plan_key({
+        const char32_t character = lakakey::translate_keyboard_key(vk, key_data);
+        const auto plan = lakakey::plan_key({
             engine_.settings().enabled,
             is_secure(ctx),
             blocked_modifiers(),
@@ -243,13 +250,14 @@ public:
             !engine_.preedit().empty(),
             is_boundary_key(vk),
             vk == VK_BACK,
-            ascii_from_vk(vk)
+            character
         });
+        return {plan, character};
     }
-    STDMETHODIMP OnTestKeyDown(ITfContext* ctx, WPARAM vk, LPARAM, BOOL* eaten) override {
+    STDMETHODIMP OnTestKeyDown(ITfContext* ctx, WPARAM vk, LPARAM key_data, BOOL* eaten) override {
         if (!eaten) return E_POINTER;
-        const auto decision = route(ctx, vk);
-        *eaten = decision.eat_on_success ? TRUE : FALSE;
+        const auto decision = route(ctx, vk, key_data);
+        *eaten = decision.plan.eat_on_success ? TRUE : FALSE;
         return S_OK;
     }
     STDMETHODIMP OnTestKeyUp(ITfContext*, WPARAM, LPARAM, BOOL* eaten) override {
@@ -260,19 +268,19 @@ public:
         if (!eaten) return E_POINTER;
         *eaten = FALSE; return S_OK;
     }
-    STDMETHODIMP OnKeyDown(ITfContext* ctx, WPARAM vk, LPARAM, BOOL* eaten) override {
+    STDMETHODIMP OnKeyDown(ITfContext* ctx, WPARAM vk, LPARAM key_data, BOOL* eaten) override {
         if (!eaten) return E_POINTER;
         *eaten = FALSE;
-        const auto decision = route(ctx, vk);
-        if (decision.action == lakakey::KeyAction::Pass) return S_OK;
-        KeyEdit* edit = new KeyEdit(this, ctx, ascii_from_vk(vk), decision.action);
+        const auto decision = route(ctx, vk, key_data);
+        if (decision.plan.action == lakakey::KeyAction::Pass) return S_OK;
+        KeyEdit* edit = new KeyEdit(this, ctx, decision.character, decision.plan.action);
         HRESULT session_result = E_FAIL;
         const HRESULT request = ctx->RequestEditSession(
             client_, edit, TF_ES_SYNC | TF_ES_READWRITE, &session_result);
         edit->Release();
         // Fail open on unsuccessful edit sessions. Never eat the original key
         // unless text was successfully committed to the application's TSF context.
-        *eaten = decision.eat_on_success && SUCCEEDED(request) &&
+        *eaten = decision.plan.eat_on_success && SUCCEEDED(request) &&
                  session_result == S_OK ? TRUE : FALSE;
         return S_OK;
     }

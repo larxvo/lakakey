@@ -1,7 +1,7 @@
-name: Lakakey 0.12 — TSF key policy, native core and desktop checks
+name: Lakakey 0.13 — Keyboard layout, TSF COM and Windows compatibility checks
 on:
   push:
-    branches: [main, feature/tsf-native-edit-session]
+    branches: [main, feature/tsf-native-edit-session, feature/lakakey-0.12-native-input, feature/lakakey-0.13-windows-compat]
     paths: ['desktop/**','include/**','src/**','tests/**','platform/windows/tsf/**','CMakeLists.txt','go.mod','.github/workflows/windows-desktop-beta.yml']
   pull_request:
     paths: ['desktop/**','include/**','src/**','tests/**','platform/windows/tsf/**','CMakeLists.txt','go.mod','.github/workflows/windows-desktop-beta.yml']
@@ -42,10 +42,17 @@ jobs:
         run: |
           cmake -S . -B build-win -A x64 -DLAKAKEY_BUILD_TESTS=ON -DLAKAKEY_BUILD_TSF_V2=ON -DLAKAKEY_BUILD_EXPERIMENTAL_TSF=OFF
           if ($LASTEXITCODE -ne 0) { throw 'Native configuration failed' }
-          cmake --build build-win --config Release --target lakakey_tests lakakey_session_tests lakakey_contract_tests lakakey_tsf_policy_tests LakakeyTsfV2 LakakeyTsfSmokeHost
+          cmake --build build-win --config Release --target lakakey_tests lakakey_session_tests lakakey_contract_tests lakakey_tsf_policy_tests LakakeyTsfV2 LakakeyTsfSmokeHost LakakeyTsfComSmoke LakakeyKeyboardLayoutSmoke LakakeyTsfRegistrationSmoke
           if ($LASTEXITCODE -ne 0) { throw 'Native build failed' }
           ctest --test-dir build-win -C Release --output-on-failure
           if ($LASTEXITCODE -ne 0) { throw 'Core regression tests failed' }
+      - name: Ephemeral TSF registration and cleanup smoke
+        shell: pwsh
+        run: |
+          $smoke = (Resolve-Path 'build-win/Release/LakakeyTsfRegistrationSmoke.exe').Path
+          $dll = (Resolve-Path 'build-win/Release/LakakeyTsfV2.dll').Path
+          & $smoke $dll '--ephemeral-runner'
+          if ($LASTEXITCODE -ne 0) { throw 'TSF profile registration test failed; no user release allowed' }
       - name: Compile Windows app and per-user setup
         shell: pwsh
         run: |
@@ -82,13 +89,27 @@ jobs:
       - name: Upload runnable desktop-only beta
         uses: actions/upload-artifact@v4
         with:
-          name: Lakakey-0.12-Windows-x64-Dev
+          name: Lakakey-0.13-Windows-x64-Dev
           if-no-files-found: error
           retention-days: 30
           path: |
             LakakeyDesktopSetup.exe
             desktop/installer/payload/LakakeyDesktop.exe
             desktop/installer/payload/README.txt
+      - name: Archive current source revision
+        shell: pwsh
+        run: |
+          git archive --format=zip -o Lakakey-0.13-Source.zip HEAD
+          if ($LASTEXITCODE -ne 0 -or !(Test-Path Lakakey-0.13-Source.zip)) {
+            throw 'Source archive generation failed'
+          }
+      - name: Upload source revision
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lakakey-0.13-Complete-Source
+          if-no-files-found: error
+          retention-days: 30
+          path: Lakakey-0.13-Source.zip
       - name: Upload research-only TSF DLL separately
         uses: actions/upload-artifact@v4
         with:
@@ -98,4 +119,7 @@ jobs:
           path: |
             build-win/Release/LakakeyTsfV2.dll
             build-win/Release/LakakeyTsfSmokeHost.exe
+            build-win/Release/LakakeyTsfComSmoke.exe
+            build-win/Release/LakakeyKeyboardLayoutSmoke.exe
+            build-win/Release/LakakeyTsfRegistrationSmoke.exe
 # Stable releases must pass native OS QA and publisher signing; no automatic release.
