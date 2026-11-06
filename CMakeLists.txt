@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(Lakakey VERSION 0.13.0 LANGUAGES C CXX)
+project(Lakakey VERSION 0.14.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(LAKAKEY_BUILD_TESTS "Build engine tests" ON)
@@ -119,6 +119,18 @@ if(WIN32 AND LAKAKEY_BUILD_TSF_V2)
     add_dependencies(lakakey_contract_tests LakakeyTsfComSmoke)
   endif()
 
+  # Verify the text-service event sink against a real Windows TSF thread manager.
+  # Does not register an input profile or capture text.
+  add_executable(LakakeyTsfActivationSmoke tests/windows/tsf_activation_smoke.cpp)
+  target_link_libraries(LakakeyTsfActivationSmoke PRIVATE ole32 uuid user32)
+  if(MSVC)
+    target_compile_options(LakakeyTsfActivationSmoke PRIVATE /W4 /utf-8)
+  endif()
+  if(LAKAKEY_BUILD_TESTS)
+    add_test(NAME lakakey_tsf_activation_smoke
+             COMMAND $<TARGET_FILE:LakakeyTsfActivationSmoke> $<TARGET_FILE:LakakeyTsfV2>)
+    add_dependencies(lakakey_contract_tests LakakeyTsfActivationSmoke)
+  endif()
   # QA only: built with opt-in TSF research target, never in user installer.
   add_executable(LakakeyTsfSmokeHost WIN32 platform/windows/tsf/smoke_host.cpp)
   target_compile_definitions(LakakeyTsfSmokeHost PRIVATE UNICODE _UNICODE)
