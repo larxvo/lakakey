@@ -130,11 +130,10 @@ if(WIN32 AND LAKAKEY_BUILD_TSF_V2)
   if(MSVC)
     target_compile_options(LakakeyTsfActivationSmoke PRIVATE /W4 /utf-8)
   endif()
-  if(LAKAKEY_BUILD_TESTS)
-    add_test(NAME lakakey_tsf_activation_smoke
-             COMMAND $<TARGET_FILE:LakakeyTsfActivationSmoke> $<TARGET_FILE:LakakeyTsfV2>)
-    add_dependencies(lakakey_contract_tests LakakeyTsfActivationSmoke)
-  endif()
+  # A directly instantiated service has an application-owned TfClientId, not
+  # a profile-provided service id: Win32 rejects this path with E_INVALIDARG.
+  # Keep it as diagnostic research only, not a passing input integration test.
+  # Real input activation is exercised by the isolated profile-driven lab.
   # Interactive synthetic typing probe, allowed ONLY on disposable CI runners.
   # Not part of CTest or the ordinary user installer; results are reported separately.
   add_executable(LakakeyTsfLiveTyping tests/windows/tsf_live_typing.cpp)
