@@ -29,7 +29,7 @@ DLL TSF trong gói nghiên cứu lên máy dùng hằng ngày.
 
 Bộ cài này **chưa kích hoạt khả năng gõ tiếng Việt toàn hệ thống**.
 TSF đang được kiểm thử trong môi trường tách biệt. Xem
-[ma trận QA 0.14](WINDOWS-COMPAT-0.14.md) để biết các điều kiện trước khi
+[tiêu chí kiểm thử 0.14](ATOMIC-INPUT-0.14.md) để biết các điều kiện trước khi
 phát hành đầy đủ.
 
 ## Gửi báo cáo lỗi
