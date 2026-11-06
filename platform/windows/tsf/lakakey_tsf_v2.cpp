@@ -9,6 +9,7 @@
 #include <utility>
 #include "lakakey_engine.h"
 #include "lakakey_tsf_policy.h"
+#include "lakakey_win_key_translation.h"
 
 namespace {
 constexpr CLSID kClsid = {0xc67c6419,0x3d0f,0x4f56,{0x9c,0x4b,0x9d,0x8a,0x6e,0x74,0xa7,0x11}};
@@ -57,26 +58,6 @@ bool is_secure(ITfContext* ctx) {
     }
     return false;
 }
-// Translate through the active keyboard layout rather than assuming US QWERTY.
-// ToUnicodeEx bit 2 avoids mutating dead-key composition state (Windows 10+).
-// Punctuation, dead keys, AltGr and non-ASCII input remain owned by the host.
-char32_t ascii_from_key(WPARAM vk, LPARAM key_data) {
-    BYTE state[256]{};
-    if (!GetKeyboardState(state)) return U'\0';
-    const UINT scan_code = (static_cast<UINT>(key_data) >> 16) & 0xffU;
-    wchar_t translated[8]{};
-    constexpr UINT do_not_modify_keyboard_state = 0x04U;
-    const int count = ToUnicodeEx(static_cast<UINT>(vk), scan_code,
-                                  state, translated, 8,
-                                  do_not_modify_keyboard_state, GetKeyboardLayout(0));
-    if (count != 1) return U'\0';
-    const wchar_t ch = translated[0];
-    const bool letter = (ch >= L'a' && ch <= L'z') ||
-                        (ch >= L'A' && ch <= L'Z');
-    const bool digit = ch >= L'0' && ch <= L'9';
-    return letter || digit ? static_cast<char32_t>(ch) : U'\0';
-}
-
 // Per-user preference bridge from LakakeyDesktop. Only two DWORD values are
 // read. This service does not read or write user keystroke history.
 void read_input_preferences(lakakey::Settings& settings) {
@@ -259,7 +240,7 @@ public:
     RoutedKey route(ITfContext* ctx, WPARAM vk, LPARAM key_data) {
         refresh_input_preferences();
         const bool active = composition_ != nullptr;
-        const char32_t character = ascii_from_key(vk, key_data);
+        const char32_t character = lakakey::translate_keyboard_key(vk, key_data);
         const auto plan = lakakey::plan_key({
             engine_.settings().enabled,
             is_secure(ctx),
