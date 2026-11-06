@@ -8,6 +8,7 @@ Maintainer: Larx Vo | https://vovinhlac.com | © 2026
 - Navigation and punctuation are not swallowed. Finalization is attempted before host processing.
 - Failed synchronous edit sessions pass original keys back to the application.
 - Unit tests cover disabled mode, sensitive contexts, shortcut modifiers, focus mismatch and backspace.
+- Additional TSF bypass check for transitory text stores and native Win32 password EDIT controls; other frameworks still require separate security QA.
 - Native desktop writes only Enabled and Scheme REG_DWORD with advapi32 (no reg.exe subprocess per mode change).
 - Win32 QA host with regular, multiline and password fields.
 - Windows Actions builds TSF research DLL and QA host separately from user installer.
