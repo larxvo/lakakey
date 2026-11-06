@@ -76,7 +76,7 @@ if(WIN32 AND LAKAKEY_BUILD_TSF_V2)
   add_library(LakakeyTsfV2 SHARED
     platform/windows/tsf/lakakey_tsf_v2.cpp
     platform/windows/tsf/lakakey_tsf_v2.def)
-  target_link_libraries(LakakeyTsfV2 PRIVATE lakakey_core ole32 uuid advapi32)
+  target_link_libraries(LakakeyTsfV2 PRIVATE lakakey_core ole32 uuid advapi32 user32 msctf)
   target_include_directories(LakakeyTsfV2 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
   target_compile_definitions(LakakeyTsfV2 PRIVATE UNICODE _UNICODE)
   set_target_properties(LakakeyTsfV2 PROPERTIES OUTPUT_NAME LakakeyTsfV2)
