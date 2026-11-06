@@ -21,7 +21,7 @@ var packed embed.FS
 
 var messageBox = syscall.NewLazyDLL("user32.dll").NewProc("MessageBoxW")
 
-const appVersion = "0.10.1"
+const appVersion = "0.11.0"
 const regUninstall = `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\LakakeyDesktopBeta`
 const regStartup = `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
 
@@ -60,24 +60,15 @@ func install() {
 		tell("Không thể tạo thư mục: "+err.Error(), 0x10)
 		return
 	}
-	for _, name := range []string{"LakakeyDesktop.exe", "README.txt"} {
-		data, err := packed.ReadFile("payload/" + name)
-		if err != nil {
-			tell("Bộ cài bị thiếu: "+name, 0x10)
-			return
-		}
-		target := filepath.Join(dir, name)
-		tmp := target + ".new"
-		if err = os.WriteFile(tmp, data, 0644); err != nil {
-			tell("Không ghi được file: "+err.Error(), 0x10)
-			return
-		}
-		_ = os.Remove(target)
-		if err = os.Rename(tmp, target); err != nil {
-			tell("Không thể cập nhật ứng dụng. Hãy đóng Lakakey từ system tray rồi chạy lại bộ cài.\n"+err.Error(), 0x10)
-			return
+	// Stage each file before atomic replacement. Update the EXE last.
+	for _,name:=range []string{"README.txt","LakakeyDesktop.exe"} {
+		data,err:=packed.ReadFile("payload/"+name)
+		if err!=nil {tell("Bộ cài thiếu tệp: "+name,0x10);return}
+		if err=installFile(filepath.Join(dir,name),data);err!=nil {
+			tell("Không thể cập nhật: "+name+"\n"+err.Error(),0x10);return
 		}
 	}
+
 	self, err := os.Open(os.Args[0])
 	if err != nil {
 		tell("Không thể tạo trình gỡ cài đặt.", 0x10)
