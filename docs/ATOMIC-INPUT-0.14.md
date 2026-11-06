@@ -58,3 +58,34 @@ unexpected auto-registration of experimental components.
 system-wide Vietnamese input.** Production compatibility QA is pending.
 
 See also `docs/WINDOWS-COMPAT-0.13.md` and `docs/STATUS.md`.
+
+## Optional TSF test on an isolated Windows VM
+
+The research-only GitHub artifact includes `LakakeyTsfV2.dll`,
+`LakakeyTsfLabCtl.exe` and native QA tools. Nothing in the ordinary desktop
+installer registers this DLL. For testing only, first create a disposable
+Windows VM snapshot and extract the research files into a fixed folder.
+
+From a PowerShell window in that folder:
+
+```powershell
+.\\LakakeyTsfLabCtl.exe --status
+.\\LakakeyTsfLabCtl.exe --register .\\LakakeyTsfV2.dll --dev-only
+```
+
+In Windows input settings, check whether the Lakakey Vietnamese experimental
+profile appears and, if available, select it for isolated testing in the
+native QA host and Notepad. Do not enter real passwords or sensitive data.
+Registration does not guarantee activation or successful text input.
+
+After testing, select another input source and run:
+
+```powershell
+.\\LakakeyTsfLabCtl.exe --unregister --dev-only
+.\\LakakeyTsfLabCtl.exe --status
+```
+
+Remove the test files only after registration has been cleaned up.
+The command-line tool performs changes only after explicit `--dev-only`
+commands and gives text feedback without popup dialogs. No typed content is
+logged, transmitted or persisted.
