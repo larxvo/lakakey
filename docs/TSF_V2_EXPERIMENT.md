@@ -65,7 +65,7 @@ it is stored for 30 days under the named GitHub Actions artifact
 Install logic is per user (`PrivilegesRequired=lowest`), copies the TSF DLL to
 `%LOCALAPPDATA%\\Programs\\LakakeyNativeAlpha`, then invokes 64-bit `regsvr32`
 for registration. Uninstall invokes `regsvr32 /u` before file deletion.
-No legacy keyboard or UniKey files are modified.
+No other installed input services or system keyboard settings are modified.
 
 **Caveat:** If Windows TSF rejects per-user profile registration, or setup fails
 mid-transaction, the package may not activate or clean up fully. This is an
