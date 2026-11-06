@@ -43,9 +43,12 @@ public:
         const bool space=ch==U' ';
         const bool backspace=ch==U'\b';
         const bool boundary=space || ch==U'\n' || ch==U'.';
-        const char32_t character=(ch>=U'a'&&ch<=U'z')||
+        const bool letter_or_digit=(ch>=U'a'&&ch<=U'z')||
                                  (ch>=U'A'&&ch<=U'Z')||
-                                 (ch>=U'0'&&ch<=U'9')?ch:U'\0';
+                                 (ch>=U'0'&&ch<=U'9');
+        const bool printable=(ch>=U'!'&&ch<=U'~');
+        const char32_t character=(letter_or_digit ||
+              (!composition_.empty() && printable)) ? ch : U'\0';
         const KeyPlan plan=plan_key({enabled_,secure_,shortcut,
             !composition_.empty(),true,!composition_.empty(),boundary,backspace,space,character});
         if(plan.action==KeyAction::Insert || plan.action==KeyAction::CommitSpace ||
@@ -77,6 +80,14 @@ int main() {
     SimulatedHost v(vni);
     for(char32_t ch:std::u32string(U"tie6ng1 ")) v.input(ch);
     require(v.document()=="tiếng ","VNI composition plus space");
+    SimulatedHost punctuation;
+    for(char32_t ch:std::u32string(U"chaof!")) punctuation.input(ch);
+    require(punctuation.document()=="chào!","atomic punctuation commit");
+    require(punctuation.visible()=="chào!","no lingering composition after punctuation");
+    SimulatedHost bare_punctuation;
+    auto host_punctuation=bare_punctuation.input(U'!');
+    require(host_punctuation.action==KeyAction::Pass &&
+            bare_punctuation.document()=="!","host owns punctuation without preedit");
     SimulatedHost erase;
     for(char32_t ch:std::u32string(U"chaof")) erase.input(ch);
     require(erase.visible()=="chào","Telex tone before backspace");
