@@ -57,6 +57,28 @@ jobs:
           if ((Get-Item LakakeyDesktopSetup.exe).Length -lt 200000) { throw 'Invalid setup size' }
           Get-FileHash LakakeyDesktopSetup.exe -Algorithm SHA256
           Get-FileHash desktop/installer/payload/LakakeyDesktop.exe -Algorithm SHA256
+      - name: Smoke-test desktop mode publication (not text input)
+        shell: pwsh
+        run: |
+          $exe = Join-Path $PWD 'desktop/installer/payload/LakakeyDesktop.exe'
+          $app = Start-Process -FilePath $exe -ArgumentList '--tray' -PassThru
+          try {
+            $key = 'HKCU\Software\LarxVo\Lakakey\Input'
+            $ok = $false
+            for ($i=0; $i -lt 20; $i++) {
+              $enabled = reg query $key /v Enabled 2>$null
+              $scheme = reg query $key /v Scheme 2>$null
+              if ($LASTEXITCODE -eq 0 -and $enabled -match 'REG_DWORD' -and $scheme -match 'REG_DWORD') {
+                $ok = $true
+                break
+              }
+              Start-Sleep -Milliseconds 200
+            }
+            if (-not $ok) { throw 'Lakakey did not publish native input preferences' }
+          } finally {
+            Start-Process -FilePath $exe -ArgumentList '--quit' -Wait
+            $app.WaitForExit(3000) | Out-Null
+          }
       - name: Upload runnable desktop-only beta
         uses: actions/upload-artifact@v4
         with:
