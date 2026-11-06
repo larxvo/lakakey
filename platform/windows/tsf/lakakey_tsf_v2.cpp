@@ -61,6 +61,9 @@ bool is_secure(ITfContext* ctx) {
 // Per-user preference bridge from LakakeyDesktop. Only two DWORD values are
 // read. This service does not read or write user keystroke history.
 void read_input_preferences(lakakey::Settings& settings) {
+    // Fail closed: a test service never processes input unless desktop
+    // explicitly publishes Enabled=1. No implicit system-wide activation.
+    settings.enabled = false;
     HKEY key=nullptr;
     constexpr wchar_t path[]=L"Software\\LarxVo\\Lakakey\\Input";
     if (RegOpenKeyExW(HKEY_CURRENT_USER,path,0,KEY_QUERY_VALUE,&key)!=ERROR_SUCCESS) return;
@@ -73,7 +76,7 @@ void read_input_preferences(lakakey::Settings& settings) {
     };
     DWORD enabled=1;
     DWORD scheme=0;
-    if(query_dword(L"Enabled",&enabled))settings.enabled=(enabled!=0);
+    if(query_dword(L"Enabled",&enabled))settings.enabled=(enabled==1);
     if(query_dword(L"Scheme",&scheme)) {
         if(scheme==0)settings.scheme=lakakey::Scheme::Telex;
         else if(scheme==1)settings.scheme=lakakey::Scheme::Vni;
@@ -240,7 +243,13 @@ public:
     RoutedKey route(ITfContext* ctx, WPARAM vk, LPARAM key_data) {
         refresh_input_preferences();
         const bool active = composition_ != nullptr;
-        const char32_t character = lakakey::translate_keyboard_key(vk, key_data);
+        char32_t character = lakakey::translate_keyboard_key(vk, key_data);
+        if (active && character == U'\0') {
+            // Do not let the host insert punctuation inside an unfinished
+            // composition. The engine commits the syllable plus delimiter
+            // atomically; a rejected edit session passes the original key.
+            character = lakakey::translate_keyboard_boundary(vk, key_data);
+        }
         const auto plan = lakakey::plan_key({
             engine_.settings().enabled,
             is_secure(ctx),
@@ -437,10 +446,18 @@ HRESULT register_service(bool enable) {
             hr = profiles->AddLanguageProfile(kClsid, MAKELANGID(LANG_VIETNAMESE, SUBLANG_DEFAULT),
                     kProfile, kProfileName, static_cast<ULONG>(wcslen(kProfileName)),
                     dll, static_cast<ULONG>(wcslen(dll)), 0);
+            if (SUCCEEDED(hr)) {
+                hr = profiles->EnableLanguageProfile(
+                    kClsid, MAKELANGID(LANG_VIETNAMESE, SUBLANG_DEFAULT),
+                    kProfile, TRUE);
+            }
         }
     } else {
-        // Release the language profile before unregistering the text service.
+        // Deactivate the test profile before unregistering the text service.
         // Registration can fail mid-way, so cleanup should be idempotent.
+        (void)profiles->EnableLanguageProfile(
+            kClsid, MAKELANGID(LANG_VIETNAMESE, SUBLANG_DEFAULT),
+            kProfile, FALSE);
         const HRESULT remove_hr = profiles->RemoveLanguageProfile(
             kClsid, MAKELANGID(LANG_VIETNAMESE, SUBLANG_DEFAULT), kProfile);
         (void)remove_hr;

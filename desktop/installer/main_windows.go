@@ -21,7 +21,7 @@ var packed embed.FS
 
 var messageBox = syscall.NewLazyDLL("user32.dll").NewProc("MessageBoxW")
 
-const appVersion = "0.13.0"
+const appVersion = "0.14.0"
 const regUninstall = `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\LakakeyDesktopBeta`
 const regStartup = `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
 

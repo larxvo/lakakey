@@ -27,6 +27,31 @@ inline char32_t translate_keyboard_key(WPARAM key, LPARAM lparam,
     // Host owns punctuation, dead keys, and non-ASCII input.
     return U'\0';
 }
+// Called only while a Lakakey composition is active. Converts ASCII
+// punctuation/space into a committed boundary in the SAME edit session.
+// Dead keys, non-ASCII and layout-specific multichar sequences pass through.
+inline char32_t translate_keyboard_boundary(WPARAM key, LPARAM lparam,
+                                             HKL layout, const BYTE state[256]) {
+    if (!layout || !state) return U'\0';
+    wchar_t result[8]{};
+    const UINT scan_code = (static_cast<UINT>(lparam) >> 16) & 0xffU;
+    constexpr UINT preserve_dead_keys = 0x04U;
+    const int count = ToUnicodeEx(static_cast<UINT>(key), scan_code,
+                                  state, result, 8, preserve_dead_keys, layout);
+    if (count != 1) return U'\0';
+    const wchar_t c = result[0];
+    const bool letter = (c >= L'a' && c <= L'z') ||
+                        (c >= L'A' && c <= L'Z');
+    const bool number = (c >= L'0' && c <= L'9');
+    return (c >= L' ' && c <= L'~' && !letter && !number)
+            ? static_cast<char32_t>(c) : U'\0';
+}
+inline char32_t translate_keyboard_boundary(WPARAM key, LPARAM lparam) {
+    BYTE state[256]{};
+    if (!GetKeyboardState(state)) return U'\0';
+    return translate_keyboard_boundary(key, lparam, GetKeyboardLayout(0), state);
+}
+
 inline char32_t translate_keyboard_key(WPARAM key, LPARAM lparam) {
     BYTE state[256]{};
     if (!GetKeyboardState(state)) return U'\0';

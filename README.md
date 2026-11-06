@@ -4,13 +4,13 @@
 
 Created by **Larx Vo** · [vovinhlac.com](https://vovinhlac.com) · Copyright © 2026.
 
-## Development status — 0.13 Windows Compatibility
+## Development status — 0.14 Native Windows Typing Verification
 
 Lakakey is under active development. Its portable C++ engine includes baseline Telex/VNI support, Unicode handling and unit tests. A native Windows desktop app provides Settings, system tray, hotkeys and local preferences. A Windows Text Services Framework (TSF) implementation is being tested separately.
 
 **The current Windows desktop installer does not activate system-wide Vietnamese input.** The native TSF DLL is experimental and is not installed by the public desktop setup. Compatibility with Notepad, Office, browsers and development editors remains a release gate, not a completed claim.
 
-## What's in 0.13
+## What's in 0.14
 
 - Shared, deterministic TSF key-routing contract for probe and edit paths; punctuation/navigation remain available to the host.
 - Fail-open handling for rejected synchronous edit sessions.
@@ -19,13 +19,17 @@ Lakakey is under active development. Its portable C++ engine includes baseline T
 - Optional native test host with text, multiline and password fields.
 - Windows keyboard-layout-aware character translation (rather than assuming one physical layout).
 - TSF COM smoke validation of class factory and interface release, without installing the text service.
+- Real Windows TSF thread manager activation smoke and opt-in synthetic typing into a native EDIT field on a disposable Windows runner.
+- Atomic space/ASCII punctuation commits in active TSF composition, plus repeated boundary regression tests.
+- Explicit profile enablement and safe **disabled** default when an input preference has not been published.
+- Separate source, desktop setup and research-only artifacts. See [0.14 evidence levels](docs/LIVE-TYPING-0.14.md).
 - Best-effort composition finalization on focus loss and an inline native-registration diagnostics screen.
 - Windows x64 executable builds, separate research-only TSF build artifacts and CI configuration.
 - Quiet, locally stored settings; no login, marketing popups or typed-text telemetry.
 
 ## Download and run desktop development builds
 
-Use [GitHub Actions](https://github.com/larxvo/lakakey/actions/workflows/windows-desktop-beta.yml) after a **successful** run on the relevant branch; download the `Lakakey-0.13-Windows-x64-Dev` artifact. Artifacts may require an authenticated GitHub session. This is an **unsigned development build**: verify its origin and SHA-256 and do not bypass security warnings without assessing the risk.
+Use [GitHub Actions](https://github.com/larxvo/lakakey/actions/workflows/windows-desktop-beta.yml) after a **successful** run on the relevant branch; download the `Lakakey-0.14-Windows-x64-Dev` artifact. Artifacts may require an authenticated GitHub session. This is an **unsigned development build**: verify its origin and SHA-256 and do not bypass security warnings without assessing the risk.
 
 When available, run `LakakeyDesktopSetup.exe`. It installs the desktop settings/tray application for the current user and provides an uninstall entry. The experimental TSF DLL remains separate.
 
@@ -40,7 +44,8 @@ When available, run `LakakeyDesktopSetup.exe`. It installs the desktop settings/
 | `desktop/windows/` | Native Windows Settings, tray, local preferences |
 | `desktop/installer/` | Per-user Windows desktop installer |
 | `tests/` | Core, session, Unicode and TSF policy regression tests |
-| `docs/WINDOWS-COMPAT-0.13.md` | Windows interoperability matrix and release gates |
+| `docs/LIVE-TYPING-0.14.md` | TSF activation, synthetic typing evidence and 0.14 release gates |
+| `docs/WINDOWS-COMPAT-0.13.md` | Previous Windows interoperability matrix |
 | `docs/NATIVE-INPUT-0.12.md` | Previous milestone QA criteria |
 
 ## Building and testing
@@ -65,7 +70,7 @@ Experimental Windows native adapter requires Windows SDK and Visual Studio/MSVC:
 
 ```powershell
 cmake -S . -B build-win -A x64 -DLAKAKEY_BUILD_TSF_V2=ON -DLAKAKEY_BUILD_TESTS=ON
-cmake --build build-win --config Release --target LakakeyTsfV2 LakakeyTsfSmokeHost LakakeyTsfComSmoke LakakeyKeyboardLayoutSmoke lakakey_tsf_policy_tests
+cmake --build build-win --config Release --target LakakeyTsfV2 LakakeyTsfSmokeHost LakakeyTsfComSmoke LakakeyTsfActivationSmoke LakakeyTsfLiveTyping LakakeyKeyboardLayoutSmoke lakakey_tsf_policy_tests
 ctest --test-dir build-win -C Release --output-on-failure
 ```
 

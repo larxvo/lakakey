@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(Lakakey VERSION 0.13.0 LANGUAGES C CXX)
+project(Lakakey VERSION 0.14.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(LAKAKEY_BUILD_TESTS "Build engine tests" ON)
@@ -25,6 +25,9 @@ if(LAKAKEY_BUILD_TESTS)
     add_executable(lakakey_tests tests/test_engine.cpp)
     target_link_libraries(lakakey_tests PRIVATE lakakey_core)
     add_test(NAME lakakey_engine_tests COMMAND lakakey_tests)
+    add_executable(lakakey_boundary_tests tests/test_boundaries.cpp)
+    target_link_libraries(lakakey_boundary_tests PRIVATE lakakey_core)
+    add_test(NAME lakakey_boundary_tests COMMAND lakakey_boundary_tests)
     add_executable(lakakey_session_tests tests/test_session.cpp)
     target_link_libraries(lakakey_session_tests PRIVATE lakakey_core)
     add_test(NAME lakakey_session_tests COMMAND lakakey_session_tests)
@@ -42,6 +45,7 @@ if(LAKAKEY_BUILD_TESTS)
     add_test(NAME lakakey_tsf_policy_tests COMMAND lakakey_tsf_policy_tests)
     # Older CI jobs build only lakakey_contract_tests before running all CTest cases.
     add_dependencies(lakakey_contract_tests lakakey_tsf_policy_tests)
+    add_dependencies(lakakey_contract_tests lakakey_boundary_tests)
 endif()
 
 # Windows-native settings companion (not a system IME).
@@ -119,6 +123,25 @@ if(WIN32 AND LAKAKEY_BUILD_TSF_V2)
     add_dependencies(lakakey_contract_tests LakakeyTsfComSmoke)
   endif()
 
+  # Verify the text-service event sink against a real Windows TSF thread manager.
+  # Does not register an input profile or capture text.
+  add_executable(LakakeyTsfActivationSmoke tests/windows/tsf_activation_smoke.cpp)
+  target_link_libraries(LakakeyTsfActivationSmoke PRIVATE ole32 uuid user32)
+  if(MSVC)
+    target_compile_options(LakakeyTsfActivationSmoke PRIVATE /W4 /utf-8)
+  endif()
+  # A directly instantiated service has an application-owned TfClientId, not
+  # a profile-provided service id: Win32 rejects this path with E_INVALIDARG.
+  # Keep it as diagnostic research only, not a passing input integration test.
+  # Real input activation is exercised by the isolated profile-driven lab.
+  # Interactive synthetic typing probe, allowed ONLY on disposable CI runners.
+  # Not part of CTest or the ordinary user installer; results are reported separately.
+  add_executable(LakakeyTsfLiveTyping tests/windows/tsf_live_typing.cpp)
+  target_compile_definitions(LakakeyTsfLiveTyping PRIVATE UNICODE _UNICODE)
+  target_link_libraries(LakakeyTsfLiveTyping PRIVATE ole32 uuid user32 advapi32)
+  if(MSVC)
+    target_compile_options(LakakeyTsfLiveTyping PRIVATE /W4 /utf-8)
+  endif()
   # QA only: built with opt-in TSF research target, never in user installer.
   add_executable(LakakeyTsfSmokeHost WIN32 platform/windows/tsf/smoke_host.cpp)
   target_compile_definitions(LakakeyTsfSmokeHost PRIVATE UNICODE _UNICODE)

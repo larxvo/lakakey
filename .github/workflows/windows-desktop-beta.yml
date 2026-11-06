@@ -1,7 +1,7 @@
-name: Lakakey 0.13 — Keyboard layout, TSF COM and Windows compatibility checks
+name: Lakakey 0.14 — Native typing research, TSF activation and Windows delivery
 on:
   push:
-    branches: [main, feature/tsf-native-edit-session, feature/lakakey-0.12-native-input, feature/lakakey-0.13-windows-compat]
+    branches: [main, feature/tsf-native-edit-session, feature/lakakey-0.12-native-input, feature/lakakey-0.13-windows-compat, feature/lakakey-0.14-live-typing]
     paths: ['desktop/**','include/**','src/**','tests/**','platform/windows/tsf/**','CMakeLists.txt','go.mod','.github/workflows/windows-desktop-beta.yml']
   pull_request:
     paths: ['desktop/**','include/**','src/**','tests/**','platform/windows/tsf/**','CMakeLists.txt','go.mod','.github/workflows/windows-desktop-beta.yml']
@@ -42,7 +42,7 @@ jobs:
         run: |
           cmake -S . -B build-win -A x64 -DLAKAKEY_BUILD_TESTS=ON -DLAKAKEY_BUILD_TSF_V2=ON -DLAKAKEY_BUILD_EXPERIMENTAL_TSF=OFF
           if ($LASTEXITCODE -ne 0) { throw 'Native configuration failed' }
-          cmake --build build-win --config Release --target lakakey_tests lakakey_session_tests lakakey_contract_tests lakakey_tsf_policy_tests LakakeyTsfV2 LakakeyTsfSmokeHost LakakeyTsfComSmoke LakakeyKeyboardLayoutSmoke LakakeyTsfRegistrationSmoke
+          cmake --build build-win --config Release --target lakakey_tests lakakey_session_tests lakakey_contract_tests lakakey_tsf_policy_tests LakakeyTsfV2 LakakeyTsfSmokeHost LakakeyTsfComSmoke LakakeyKeyboardLayoutSmoke LakakeyTsfRegistrationSmoke LakakeyTsfActivationSmoke LakakeyTsfLiveTyping
           if ($LASTEXITCODE -ne 0) { throw 'Native build failed' }
           ctest --test-dir build-win -C Release --output-on-failure
           if ($LASTEXITCODE -ne 0) { throw 'Core regression tests failed' }
@@ -53,6 +53,22 @@ jobs:
           $dll = (Resolve-Path 'build-win/Release/LakakeyTsfV2.dll').Path
           & $smoke $dll '--ephemeral-runner'
           if ($LASTEXITCODE -ne 0) { throw 'TSF profile registration test failed; no user release allowed' }
+      - name: Experimental native EDIT typing research (not a release gate)
+        id: live_input
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $smoke = (Resolve-Path 'build-win/Release/LakakeyTsfLiveTyping.exe').Path
+          $dll = (Resolve-Path 'build-win/Release/LakakeyTsfV2.dll').Path
+          & $smoke $dll '--ephemeral-runner' 2>&1 | Tee-Object -FilePath 'build-win/live-input-0.14.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Live typing not yet verified; keep TSF out of desktop setup' }
+      - name: Record live-input verification boundary
+        if: always()
+        shell: pwsh
+        run: |
+          "### Lakakey 0.14 native typing research" | Out-File -Append -FilePath $env:GITHUB_STEP_SUMMARY
+          "Result: ${{ steps.live_input.outcome }}" | Out-File -Append -FilePath $env:GITHUB_STEP_SUMMARY
+          "This synthetic interactive test is separate from compile/COM/registration tests." | Out-File -Append -FilePath $env:GITHUB_STEP_SUMMARY
       - name: Compile Windows app and per-user setup
         shell: pwsh
         run: |
@@ -89,7 +105,7 @@ jobs:
       - name: Upload runnable desktop-only beta
         uses: actions/upload-artifact@v4
         with:
-          name: Lakakey-0.13-Windows-x64-Dev
+          name: Lakakey-0.14-Windows-x64-Dev
           if-no-files-found: error
           retention-days: 30
           path: |
@@ -99,17 +115,17 @@ jobs:
       - name: Archive current source revision
         shell: pwsh
         run: |
-          git archive --format=zip -o Lakakey-0.13-Source.zip HEAD
-          if ($LASTEXITCODE -ne 0 -or !(Test-Path Lakakey-0.13-Source.zip)) {
+          git archive --format=zip -o Lakakey-0.14-Source.zip HEAD
+          if ($LASTEXITCODE -ne 0 -or !(Test-Path Lakakey-0.14-Source.zip)) {
             throw 'Source archive generation failed'
           }
       - name: Upload source revision
         uses: actions/upload-artifact@v4
         with:
-          name: Lakakey-0.13-Complete-Source
+          name: Lakakey-0.14-Complete-Source
           if-no-files-found: error
           retention-days: 30
-          path: Lakakey-0.13-Source.zip
+          path: Lakakey-0.14-Source.zip
       - name: Upload research-only TSF DLL separately
         uses: actions/upload-artifact@v4
         with:
@@ -122,4 +138,7 @@ jobs:
             build-win/Release/LakakeyTsfComSmoke.exe
             build-win/Release/LakakeyKeyboardLayoutSmoke.exe
             build-win/Release/LakakeyTsfRegistrationSmoke.exe
+            build-win/Release/LakakeyTsfActivationSmoke.exe
+            build-win/Release/LakakeyTsfLiveTyping.exe
+            build-win/live-input-0.14.txt
 # Stable releases must pass native OS QA and publisher signing; no automatic release.
