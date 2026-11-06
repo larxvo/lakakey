@@ -9,7 +9,7 @@ Maintainer: Larx Vo · https://vovinhlac.com · © 2026
 - Windows native TSF key routing commits **space and printable ASCII delimiters** inside the same native edit session as the current preedit. A rejected edit session passes the original key back to the host.
 - The previous active layout/dead-key-safe translation remains in place. Outside an active composition, punctuation is not intercepted by Lakakey.
 - An opt-in executable tests the real `ITfThreadMgr` activation and key-sink lifetime against Windows TSF.
-- A separate **experimental interactive harness** registers the profile temporarily in a disposable CI runner, activates it, sends fixed synthetic Telex keys to its own Win32 EDIT field, validates the expected text, then removes the profile and test settings.
+- A separate **experimental interactive harness** registers the profile temporarily in a disposable CI runner, activates it and sends fixed synthetic keys to its own Win32 EDIT controls. The acceptance matrix covers Telex, punctuation, VNI, disabled-mode pass-through, a password field and focus return. The harness validates exact expected strings and cleans up profile/test settings.
 - Boundary regression tests cover space, punctuation, Telex and VNI with repeated sequences.
 - The old Windows preview build workflow is removed, and the quiet native diagnostics UI and installer are versioned 0.14.
 
