@@ -12,7 +12,7 @@ Lakakey is under active development. Its portable C++ engine includes baseline T
 
 ## What's in 0.14
 
-- Atomic commit of a Telex/VNI composed word **and** its trailing space in one TSF edit session; the host never receives a duplicate Space after a successful commit.
+- Atomic commit of a Telex/VNI composed word **and** trailing Space or printable punctuation in one TSF edit session; bare punctuation and navigation remain host-owned.
 - New portable transaction tests cover simulated Telex/VNI, space, tone correction, focus loss and sensitive-field bypass.
 - These tests do not establish actual typing compatibility; manual Windows integration remains required.
 
