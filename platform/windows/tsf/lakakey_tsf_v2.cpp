@@ -243,7 +243,13 @@ public:
     RoutedKey route(ITfContext* ctx, WPARAM vk, LPARAM key_data) {
         refresh_input_preferences();
         const bool active = composition_ != nullptr;
-        const char32_t character = lakakey::translate_keyboard_key(vk, key_data);
+        char32_t character = lakakey::translate_keyboard_key(vk, key_data);
+        if (active && character == U'\0') {
+            // Do not let the host insert punctuation inside an unfinished
+            // composition. The engine commits the syllable plus delimiter
+            // atomically; a rejected edit session passes the original key.
+            character = lakakey::translate_keyboard_boundary(vk, key_data);
+        }
         const auto plan = lakakey::plan_key({
             engine_.settings().enabled,
             is_secure(ctx),
