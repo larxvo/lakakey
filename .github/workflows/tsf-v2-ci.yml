@@ -35,7 +35,7 @@ jobs:
         run: cmake -S . -B build -A x64 -DLAKAKEY_BUILD_TSF_V2=ON -DLAKAKEY_BUILD_EXPERIMENTAL_TSF=OFF -DLAKAKEY_BUILD_TESTS=ON
       - name: Build prototype and portable core
         shell: pwsh
-        run: cmake --build build --config Release --target LakakeyTsfV2 lakakey_tests lakakey_session_tests --parallel
+        run: cmake --build build --config Release --target LakakeyTsfV2 lakakey_tests lakakey_session_tests lakakey_contract_tests --parallel
       - name: Execute portable core tests
         shell: pwsh
         run: ctest --test-dir build -C Release --output-on-failure
