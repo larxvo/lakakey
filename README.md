@@ -14,6 +14,7 @@ Lakakey is under active development. Its portable C++ engine includes baseline T
 
 - Atomic commit of a Telex/VNI composed word **and** trailing Space or printable punctuation in one TSF edit session; bare punctuation and navigation remain host-owned.
 - New portable transaction tests cover simulated Telex/VNI, space, tone correction, focus loss and sensitive-field bypass.
+- Isolated VM-only TSF Lab Control CLI can explicitly register and unregister the research DLL; it is **not** packaged with the normal installer.
 - These tests do not establish actual typing compatibility; manual Windows integration remains required.
 
 - Shared, deterministic TSF key-routing contract for probe and edit paths; punctuation/navigation remain available to the host.
@@ -70,7 +71,7 @@ Experimental Windows native adapter requires Windows SDK and Visual Studio/MSVC:
 
 ```powershell
 cmake -S . -B build-win -A x64 -DLAKAKEY_BUILD_TSF_V2=ON -DLAKAKEY_BUILD_TESTS=ON
-cmake --build build-win --config Release --target LakakeyTsfV2 LakakeyTsfSmokeHost LakakeyTsfComSmoke LakakeyKeyboardLayoutSmoke lakakey_tsf_policy_tests lakakey_typing_pipeline_tests
+cmake --build build-win --config Release --target LakakeyTsfV2 LakakeyTsfSmokeHost LakakeyTsfComSmoke LakakeyKeyboardLayoutSmoke LakakeyTsfLabCtl lakakey_tsf_policy_tests lakakey_typing_pipeline_tests
 ctest --test-dir build-win -C Release --output-on-failure
 ```
 
