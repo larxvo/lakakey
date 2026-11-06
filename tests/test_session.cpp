@@ -1,3 +1,6 @@
+#ifdef NDEBUG
+#undef NDEBUG // tests must assert in Release as well
+#endif
 #include "lakakey_session.h"
 #include <cassert>
 #include <iostream>
