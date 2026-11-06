@@ -9,6 +9,7 @@
 - Recovery from the previous valid settings backup. No typed text is stored.
 - Installer stages all files and atomically swaps the desktop executable only after preparation succeeds. Failure leaves the installed executable in place.
 - Tray single/double-click separation, explicit launch behavior, startup preference wiring and inline information rather than repeated modal dialogs.
+- Desktop/TSF bridge: the app writes only `Enabled` and `Scheme` DWORD preferences under `HKCU\Software\LarxVo\Lakakey\Input`. The TSF prototype reads those preferences before accepting a new composition. No typed text is shared.
 - Core input contract: disabled mode passes through input; secure fields do not consume keys. Invalid UTF-8 and surrogate code points are rejected.
 - Test suite for config recovery, migration, downgrade protection, Unicode, focus, secure field and 10,000-word deterministic stress run.
 - CI split between Linux core tests, Go race checks, Windows MSVC core + TSF compilation, and installer packaging. No automatic public release.
