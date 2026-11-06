@@ -64,14 +64,14 @@ endif()
 # TSF availability probe, not a registered IME / text service.
 if(WIN32)
   add_executable(LakakeyTsfProbe platform/windows/tsf/tsf_probe.cpp)
-  target_link_libraries(LakakeyTsfProbe PRIVATE ole32 msctf)
+  target_link_libraries(LakakeyTsfProbe PRIVATE ole32 uuid)
 endif()
 
 # Experimental Windows TSF COM DLL: registration & key sink, not yet an operational IME.
 option(LAKAKEY_BUILD_EXPERIMENTAL_TSF "Build unverified experimental TSF COM DLL (not for end users)" OFF)
 if(WIN32 AND LAKAKEY_BUILD_EXPERIMENTAL_TSF)
   add_library(LakakeyTsf SHARED platform/windows/tsf/lakakey_tsf.cpp platform/windows/tsf/lakakey_tsf.def)
-  target_link_libraries(LakakeyTsf PRIVATE lakakey_core ole32 msctf advapi32)
+  target_link_libraries(LakakeyTsf PRIVATE lakakey_core ole32 uuid advapi32 user32)
   target_include_directories(LakakeyTsf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
   target_compile_definitions(LakakeyTsf PRIVATE UNICODE _UNICODE)
 endif()
@@ -82,7 +82,7 @@ if(WIN32 AND LAKAKEY_BUILD_TSF_V2)
   add_library(LakakeyTsfV2 SHARED
     platform/windows/tsf/lakakey_tsf_v2.cpp
     platform/windows/tsf/lakakey_tsf_v2.def)
-  target_link_libraries(LakakeyTsfV2 PRIVATE lakakey_core ole32 uuid advapi32 user32 msctf)
+  target_link_libraries(LakakeyTsfV2 PRIVATE lakakey_core ole32 uuid advapi32 user32)
   target_include_directories(LakakeyTsfV2 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
   target_compile_definitions(LakakeyTsfV2 PRIVATE UNICODE _UNICODE)
   set_target_properties(LakakeyTsfV2 PROPERTIES OUTPUT_NAME LakakeyTsfV2)
