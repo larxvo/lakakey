@@ -1,46 +1,52 @@
-name: Windows Desktop Beta — compile, verify, package
-
+name: Lakakey 0.11 — Native core, desktop and TSF checks
 on:
   push:
     branches: [main, feature/tsf-native-edit-session]
-    paths:
-      - 'desktop/**'
-      - 'go.mod'
-      - '.github/workflows/windows-desktop-beta.yml'
+    paths: ['desktop/**','include/**','src/**','tests/**','platform/windows/tsf/**','CMakeLists.txt','go.mod','.github/workflows/windows-desktop-beta.yml']
   pull_request:
-    paths:
-      - 'desktop/**'
-      - 'go.mod'
-      - '.github/workflows/windows-desktop-beta.yml'
+    paths: ['desktop/**','include/**','src/**','tests/**','platform/windows/tsf/**','CMakeLists.txt','go.mod','.github/workflows/windows-desktop-beta.yml']
   workflow_dispatch:
-
 permissions:
-  contents: write
-
+  contents: read
 jobs:
-  desktop-tests:
-    runs-on: ubuntu-latest
+  core-linux:
+    name: Linux C++ engine tests and Go race checks
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Build C++ core and run all regression tests
+        run: |
+          cmake -S . -B build-linux -DCMAKE_BUILD_TYPE=Release -DLAKAKEY_BUILD_TESTS=ON
+          cmake --build build-linux --parallel 2
+          ctest --test-dir build-linux --output-on-failure
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23.x'
-      - name: Test configuration and supported choices
-        run: go test -v ./desktop/windows
-
-  windows-beta:
-    name: Build Windows x64 app + standalone installer
+      - name: Test native desktop configuration
+        run: go test -race -count=1 ./desktop/windows
+  native-windows:
+    name: Windows x64 native C++ TSF compile and standalone installer
     runs-on: windows-2022
-    needs: desktop-tests
-    timeout-minutes: 20
+    needs: core-linux
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23.x'
-      - name: Unit tests on native Windows runner
-        run: go test ./desktop/windows
-      - name: Build application and embedded per-user setup
+      - name: Validate configuration on Windows
+        shell: pwsh
+        run: go test -count=1 ./desktop/windows
+      - name: Compile C++ engine and experimental TSF with MSVC
+        shell: pwsh
+        run: |
+          cmake -S . -B build-win -A x64 -DLAKAKEY_BUILD_TESTS=ON -DLAKAKEY_BUILD_TSF_V2=ON -DLAKAKEY_BUILD_EXPERIMENTAL_TSF=OFF
+          if ($LASTEXITCODE -ne 0) { throw 'Native configuration failed' }
+          cmake --build build-win --config Release --target lakakey_tests lakakey_session_tests lakakey_contract_tests LakakeyTsfV2
+          if ($LASTEXITCODE -ne 0) { throw 'Native build failed' }
+          ctest --test-dir build-win -C Release --output-on-failure
+          if ($LASTEXITCODE -ne 0) { throw 'Core regression tests failed' }
+      - name: Compile Windows app and per-user setup
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force desktop/installer/payload | Out-Null
@@ -48,44 +54,24 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Desktop build failed' }
           go build -trimpath -ldflags '-s -w -H=windowsgui' -o LakakeyDesktopSetup.exe ./desktop/installer
           if ($LASTEXITCODE -ne 0) { throw 'Setup build failed' }
-          if ((Get-Item LakakeyDesktopSetup.exe).Length -lt 200000) { throw 'Setup too small' }
-          if ((Get-Item desktop/installer/payload/LakakeyDesktop.exe).Length -lt 200000) { throw 'Application too small' }
-          Get-FileHash LakakeyDesktopSetup.exe -Algorithm SHA256 | Format-List
-          Get-FileHash desktop/installer/payload/LakakeyDesktop.exe -Algorithm SHA256 | Format-List
-      - name: Upload EXE artifacts
+          if ((Get-Item LakakeyDesktopSetup.exe).Length -lt 200000) { throw 'Invalid setup size' }
+          Get-FileHash LakakeyDesktopSetup.exe -Algorithm SHA256
+          Get-FileHash desktop/installer/payload/LakakeyDesktop.exe -Algorithm SHA256
+      - name: Upload runnable desktop-only beta
         uses: actions/upload-artifact@v4
         with:
-          name: LakakeyDesktopBeta-Windows-x64
+          name: Lakakey-0.11-Windows-x64-Dev
           if-no-files-found: error
-          retention-days: 90
+          retention-days: 30
           path: |
             LakakeyDesktopSetup.exe
             desktop/installer/payload/LakakeyDesktop.exe
             desktop/installer/payload/README.txt
-      - name: Publish tagged beta on main after review
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $tag = 'v0.9.0-beta'
-          $notes = @'
-          Lakakey Desktop Beta — Windows native Settings, system tray and per-user installer.
-
-          WARNING: This is NOT a functional Vietnamese system input method.
-          The VN/EN switch changes preview state only; it does not type into Word,
-          Notepad, Chrome, Edge, VS Code or any other Windows application.
-          Keep using your current input method. No TSF IME is registered.
-
-          Install: LakakeyDesktopSetup.exe, per-user, removable from Installed apps.
-          Unsigned experimental build — no device compatibility or SmartScreen guarantees.
-
-          Author: Larx Vo | https://vovinhlac.com | Copyright 2026
-          '@
-          if (gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null) {
-            gh release upload $tag ./LakakeyDesktopSetup.exe --clobber --repo $env:GITHUB_REPOSITORY
-            if ($LASTEXITCODE -ne 0) { throw 'Upload failed' }
-          } else {
-            gh release create $tag ./LakakeyDesktopSetup.exe --title 'Lakakey v0.9.0 BETA — native desktop, not an IME' --notes $notes --prerelease --repo $env:GITHUB_REPOSITORY
-            if ($LASTEXITCODE -ne 0) { throw 'Release creation failed' }
-          }
+      - name: Upload research-only TSF DLL separately
+        uses: actions/upload-artifact@v4
+        with:
+          name: TSF-v2-research-NOT-FOR-END-USERS
+          if-no-files-found: error
+          retention-days: 14
+          path: build-win/Release/LakakeyTsfV2.dll
+# Stable releases must pass native OS QA and publisher signing; no automatic release.
