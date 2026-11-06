@@ -225,6 +225,7 @@ public:
         *eaten = FALSE; return S_OK;
     }
     // Route both TSF probes and real key events through the exact same policy.
+    // Space commits in the same edit session; navigation is preserved for the host.
     // The host always receives navigation, punctuation and shortcuts.
     static bool is_boundary_key(WPARAM vk) noexcept {
         return vk == VK_SPACE || vk == VK_RETURN || vk == VK_TAB ||
@@ -250,6 +251,7 @@ public:
             !engine_.preedit().empty(),
             is_boundary_key(vk),
             vk == VK_BACK,
+            vk == VK_SPACE,
             character
         });
         return {plan, character};
@@ -360,7 +362,8 @@ STDMETHODIMP KeyEdit::QueryInterface(REFIID id, void** obj) {
 STDMETHODIMP KeyEdit::DoEditSession(TfEditCookie cookie) {
     if (action_ == lakakey::KeyAction::Finalize) return service_->finish(cookie);
     lakakey::Engine next = service_->engine_;
-    lakakey::Result result = action_ == lakakey::KeyAction::Erase ? next.backspace() : next.feed(cp_);
+    lakakey::Result result = action_ == lakakey::KeyAction::Erase ? next.backspace() :
+        next.feed(action_ == lakakey::KeyAction::CommitSpace ? U' ' : cp_);
     if (!result.consumed) return S_FALSE;
     // The core emits committed text only on word boundaries / safety limits.
     // In that rare overflow case end the old composition before starting another.
