@@ -37,17 +37,24 @@ bool blocked_modifiers() {
            (GetKeyState(VK_LWIN) & 0x8000) || (GetKeyState(VK_RWIN) & 0x8000);
 }
 bool is_secure(ITfContext* ctx) {
-    TF_STATUS s{};
-    // Fail closed when the host does not expose its input security status.
-    if (!ctx || FAILED(ctx->GetStatus(&s))) return true;
-    // Host-provided flags are advisory; an end-to-end secure-field gate is
-    // still needed before a production IME release.
-#ifdef TF_SS_PASSWORD
-    if (s.dwStaticFlags & TF_SS_PASSWORD) return true;
-#endif
-#ifdef TF_SS_TRANSITORY
-    if (s.dwStaticFlags & TF_SS_TRANSITORY) return true;
-#endif
+    if (!ctx) return true;
+    TF_STATUS status{};
+    if (FAILED(ctx->GetStatus(&status))) return true;
+    // These are SDK status constants, not preprocessor feature macros.
+    // Treat hidden/transitory contexts conservatively. This remains a
+    // supplementary check, not proof of protection across browser frameworks.
+    if (status.dwStaticFlags & (TF_SS_TRANSITORY | TF_SS_NOHIDDENTEXT))
+        return true;
+    // A conventional Win32 EDIT field exposes the password style.
+    // Do not inspect its contents; only the window style is queried.
+    HWND focus = GetFocus();
+    if (focus) {
+        wchar_t class_name[48]{};
+        if (GetClassNameW(focus, class_name, 48) &&
+            CompareStringOrdinal(class_name, -1, L"Edit", -1, TRUE) == CSTR_EQUAL &&
+            (GetWindowLongPtrW(focus, GWL_STYLE) & ES_PASSWORD))
+            return true;
+    }
     return false;
 }
 char32_t ascii_from_vk(WPARAM vk) {
