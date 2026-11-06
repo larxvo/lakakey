@@ -23,7 +23,9 @@ jobs:
         with:
           go-version: '1.23.x'
       - name: Test native desktop configuration
-        run: go test -race -count=1 ./desktop/windows
+        run: |
+          go vet ./desktop/windows
+          go test -race -count=1 ./desktop/windows
   native-windows:
     name: Windows x64 native C++ TSF compile and standalone installer
     runs-on: windows-2022
@@ -86,6 +88,28 @@ jobs:
             Start-Process -FilePath $exe -ArgumentList '--quit' -Wait
             $app.WaitForExit(3000) | Out-Null
           }
+      - name: Generate checksums and build identity
+        shell: pwsh
+        run: |
+          $files = @(
+            'LakakeyDesktopSetup.exe',
+            'desktop/installer/payload/LakakeyDesktop.exe'
+          )
+          $hashLines = foreach ($f in $files) {
+            $sha = (Get-FileHash -LiteralPath $f -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$sha  $f"
+          }
+          $hashLines | Set-Content -LiteralPath SHA256SUMS.txt -Encoding utf8
+          $info = [ordered]@{
+            product = 'Lakakey'
+            version = '0.14.0'
+            git_commit = $env:GITHUB_SHA
+            target = 'windows-amd64'
+            artifact = 'desktop-controller-only'
+            tsf_installed = $false
+            publisher = 'Larx Vo'
+          }
+          ($info | ConvertTo-Json -Depth 3) | Set-Content -LiteralPath BUILD_INFO.json -Encoding utf8
       - name: Upload runnable desktop-only beta
         uses: actions/upload-artifact@v4
         with:
@@ -96,6 +120,8 @@ jobs:
             LakakeyDesktopSetup.exe
             desktop/installer/payload/LakakeyDesktop.exe
             desktop/installer/payload/README.txt
+            SHA256SUMS.txt
+            BUILD_INFO.json
       - name: Archive current source revision
         shell: pwsh
         run: |
