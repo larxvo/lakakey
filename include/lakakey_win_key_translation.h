@@ -21,10 +21,11 @@ inline char32_t translate_keyboard_key(WPARAM key, LPARAM lparam,
                                   utf16, 8, preserve_dead_keys, layout);
     if (count != 1) return U'\0';
     const wchar_t c = utf16[0];
-    if ((c >= L'a' && c <= L'z') || (c >= L'A' && c <= L'Z') ||
-        (c >= L'0' && c <= L'9'))
+    // Return printable ASCII for the caller to route. The TSF adapter only
+    // intercepts punctuation when a composition is already active.
+    // Unknown Unicode, dead keys, and control keys stay with the host.
+    if (c >= 0x21 && c <= 0x7e)
         return static_cast<char32_t>(c);
-    // Host owns punctuation, dead keys, and non-ASCII input.
     return U'\0';
 }
 inline char32_t translate_keyboard_key(WPARAM key, LPARAM lparam) {
