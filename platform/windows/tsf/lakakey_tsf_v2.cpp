@@ -241,7 +241,13 @@ public:
     RoutedKey route(ITfContext* ctx, WPARAM vk, LPARAM key_data) {
         refresh_input_preferences();
         const bool active = composition_ != nullptr;
-        const char32_t character = lakakey::translate_keyboard_key(vk, key_data);
+        const char32_t translated = lakakey::translate_keyboard_key(vk, key_data);
+        const bool letter_or_digit = (translated >= U'a' && translated <= U'z') ||
+            (translated >= U'A' && translated <= U'Z') ||
+            (translated >= U'0' && translated <= U'9');
+        // Printable punctuation is handled atomically only if a composition
+        // exists; otherwise the host owns the original punctuation key.
+        const char32_t character = (active || letter_or_digit) ? translated : U'\0';
         const auto plan = lakakey::plan_key({
             engine_.settings().enabled,
             is_secure(ctx),
