@@ -96,6 +96,12 @@ if(WIN32 AND LAKAKEY_BUILD_TSF_V2)
   target_include_directories(LakakeyTsfV2 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
   target_compile_definitions(LakakeyTsfV2 PRIVATE UNICODE _UNICODE)
   set_target_properties(LakakeyTsfV2 PROPERTIES OUTPUT_NAME LakakeyTsfV2)
+  # Developer-only reversible TSF registration utility; never in user setup.
+  add_executable(LakakeyTsfLabCtl platform/windows/tsf/lab_control.cpp)
+  target_link_libraries(LakakeyTsfLabCtl PRIVATE advapi32)
+  if(MSVC)
+    target_compile_options(LakakeyTsfLabCtl PRIVATE /W4 /utf-8)
+  endif()
   # Explicitly invoked only in disposable Windows CI; never ordinary CTest.
   add_executable(LakakeyTsfRegistrationSmoke tests/windows/tsf_registration_smoke.cpp)
   target_link_libraries(LakakeyTsfRegistrationSmoke PRIVATE advapi32)
