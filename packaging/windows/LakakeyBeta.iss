@@ -1,7 +1,7 @@
 ; Lakakey experimental native TSF installer. Copyright 2026 Larx Vo.
 ; CAUTION: internal alpha, Windows x64 only. Not production tested.
 #define MyAppName "Lakakey Native TSF Alpha"
-#define MyAppVersion "0.9.0-alpha"
+#define MyAppVersion "0.11.0-alpha"
 #define MyPublisher "Larx Vo"
 #define MyAppURL "https://vovinhlac.com"
 #ifndef SourceDll
@@ -32,6 +32,7 @@ CloseApplications=yes
 RestartApplications=no
 UsePreviousAppDir=no
 SetupLogging=yes
+InfoBeforeFile=..\..\docs\TSF_V2_EXPERIMENT.md
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -47,30 +48,3 @@ Filename: "{sys}\regsvr32.exe"; Parameters: "/s ""{app}\LakakeyTsfV2.dll"""; Sta
 [UninstallRun]
 ; The file exists until UninstallRun has completed.
 Filename: "{sys}\regsvr32.exe"; Parameters: "/s /u ""{app}\LakakeyTsfV2.dll"""; Flags: runhidden waituntilterminated
-
-[Code]
-function InitializeSetup(): Boolean;
-var
-  Response: Integer;
-begin
-  Response := MsgBox(
-    'LAKAKEY EXPERIMENTAL INPUT METHOD' + #13#10 + #13#10 +
-    'This installer registers an unverified Windows Text Services Framework keyboard. ' +
-    'It may not work correctly in Word, Chrome, Notepad or VS Code.' + #13#10 +
-    'It must NOT be used to type passwords or important documents. ' +
-    'Keep another known working keyboard available.' + #13#10 + #13#10 +
-    'Continue with the alpha installation?',
-    mbConfirmation, MB_YESNO or MB_DEFBUTTON2);
-  Result := Response = IDYES;
-end;
-
-procedure CurStepChanged(CurStep: TSetupStep);
-begin
-  if CurStep = ssDone then
-    MsgBox('Lakakey Native Alpha was installed. Restart the target application, ' +
-      'then open Windows Settings > Time & language > Language & region ' +
-      'to look for the experimental Vietnamese input method.' + #13#10 +
-      'If it does not appear or typing is unreliable, uninstall Lakakey Native TSF Alpha immediately.' +
-      'Author: Larx Vo — vovinhlac.com',
-      mbInformation, MB_OK);
-end;
