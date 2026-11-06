@@ -8,6 +8,7 @@ Updated 2026-11-06. This file distinguishes source code, reproducible tests, and
 | Per-user EXE installer | Builds and performs staged file replacement | Windows QA/rollback still required |
 | Quiet launch + inline Help/About | Implemented | Source review; real Windows visual QA pending |
 | Settings schema v2 / backups | Implemented | 7 Go tests passed on Linux |
+| Desktop ↔ TSF preference bridge | Implemented with two per-user DWORDs | Cross-compiled; live host integration testing pending |
 | C++17 Vietnamese mapping core | Telex/VNI baseline | Existing mapping tests; expanded native CI added |
 | Disabled/secure field contract | Defensive bypass added | New C++ contract tests pending CI |
 | Unicode scalar validation | Surrogate rejection added | New C++ contract tests pending CI |
