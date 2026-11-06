@@ -25,8 +25,8 @@ int main() {
     if (lakakey::translate_keyboard_key('1',static_cast<LPARAM>(0x02U<<16),layout,plain)!=U'1')
         return fail("US numeric key");
     plain[VK_SHIFT]=0x80;
-    if (lakakey::translate_keyboard_key('1',static_cast<LPARAM>(0x02U<<16),layout,plain)!=U'\0')
-        return fail("punctuation must pass through");
+    if (lakakey::translate_keyboard_key('1',static_cast<LPARAM>(0x02U<<16),layout,plain)!=U'!')
+        return fail("shifted punctuation translation");
     if (lakakey::translate_keyboard_key(VK_LEFT,static_cast<LPARAM>(0x4bU<<16),layout,plain)!=U'\0')
         return fail("navigation must pass through");
     std::cout << "Windows keyboard-layout translation: PASS\n";
