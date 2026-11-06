@@ -26,7 +26,12 @@ int main() {
         return fail("US numeric key");
     plain[VK_SHIFT]=0x80;
     if (lakakey::translate_keyboard_key('1',static_cast<LPARAM>(0x02U<<16),layout,plain)!=U'\0')
-        return fail("punctuation must pass through");
+        return fail("punctuation must pass through outside composition");
+    if (lakakey::translate_keyboard_boundary('1',static_cast<LPARAM>(0x02U<<16),layout,plain)!=U'!')
+        return fail("punctuation must be committed inside active composition");
+    plain[VK_SHIFT]=0;
+    if (lakakey::translate_keyboard_boundary(VK_SPACE,static_cast<LPARAM>(0x39U<<16),layout,plain)!=U' ')
+        return fail("active composition must commit space exactly once");
     if (lakakey::translate_keyboard_key(VK_LEFT,static_cast<LPARAM>(0x4bU<<16),layout,plain)!=U'\0')
         return fail("navigation must pass through");
     std::cout << "Windows keyboard-layout translation: PASS\n";
