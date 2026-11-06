@@ -137,6 +137,7 @@ if(WIN32 AND LAKAKEY_BUILD_TSF_V2)
   # Interactive synthetic typing probe, allowed ONLY on disposable CI runners.
   # Not part of CTest or the ordinary user installer; results are reported separately.
   add_executable(LakakeyTsfLiveTyping tests/windows/tsf_live_typing.cpp)
+  target_compile_definitions(LakakeyTsfLiveTyping PRIVATE UNICODE _UNICODE)
   target_link_libraries(LakakeyTsfLiveTyping PRIVATE ole32 uuid user32 advapi32)
   if(MSVC)
     target_compile_options(LakakeyTsfLiveTyping PRIVATE /W4 /utf-8)
