@@ -11,6 +11,7 @@ Lakakey is a free, local-first Vietnamese input platform under active developmen
 - Quiet startup and inline help/about instead of repetitive popups.
 - Safe staged file replacement during upgrades; no deleting the installed executable before a replacement succeeds.
 - Settings schema v2: atomic writes, last-valid backup recovery, migration and downgrade protection.
+- **Native preference bridge:** the Windows desktop publishes only VN/EN and Telex/VNI settings to a per-user registry key; the experimental TSF host can read them before starting a composition. This is not evidence of real-host typing compatibility.
 - Separate C++ core with Telex/VNI baseline, Unicode validation, secure-field and disabled-mode bypass contracts.
 - CI builds Windows desktop and an experimental TSF DLL separately; native engine regression tests run on Linux/Windows.
 
