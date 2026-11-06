@@ -68,5 +68,5 @@ func TestRepeatedWritesAndBackup(t *testing.T) {
   t.Setenv("APPDATA",t.TempDir());s:=defaultSettings()
   for i:=0;i<30;i++ {s.Vietnamese=i%2==0;if err:=writeSettings(s);err!=nil{t.Fatal(err)}}
   if _,err:=os.Stat(configPath()+".bak");err!=nil{t.Fatalf("missing backup: %v",err)}
-  if got:=readSettings();!got.Vietnamese{t.Fatalf("latest write lost: %#v",got)}
+  if got:=readSettings();got.Vietnamese{t.Fatalf("latest write lost: %#v",got)}
 }
