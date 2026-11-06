@@ -40,6 +40,8 @@ if(LAKAKEY_BUILD_TESTS)
       target_compile_options(lakakey_tsf_policy_tests PRIVATE /W4 /utf-8)
     endif()
     add_test(NAME lakakey_tsf_policy_tests COMMAND lakakey_tsf_policy_tests)
+    # Older CI jobs build only lakakey_contract_tests before running all CTest cases.
+    add_dependencies(lakakey_contract_tests lakakey_tsf_policy_tests)
 endif()
 
 # Windows-native settings companion (not a system IME).
