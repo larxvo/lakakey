@@ -25,6 +25,9 @@ if(LAKAKEY_BUILD_TESTS)
     add_executable(lakakey_tests tests/test_engine.cpp)
     target_link_libraries(lakakey_tests PRIVATE lakakey_core)
     add_test(NAME lakakey_engine_tests COMMAND lakakey_tests)
+    add_executable(lakakey_boundary_tests tests/test_boundaries.cpp)
+    target_link_libraries(lakakey_boundary_tests PRIVATE lakakey_core)
+    add_test(NAME lakakey_boundary_tests COMMAND lakakey_boundary_tests)
     add_executable(lakakey_session_tests tests/test_session.cpp)
     target_link_libraries(lakakey_session_tests PRIVATE lakakey_core)
     add_test(NAME lakakey_session_tests COMMAND lakakey_session_tests)
@@ -42,6 +45,7 @@ if(LAKAKEY_BUILD_TESTS)
     add_test(NAME lakakey_tsf_policy_tests COMMAND lakakey_tsf_policy_tests)
     # Older CI jobs build only lakakey_contract_tests before running all CTest cases.
     add_dependencies(lakakey_contract_tests lakakey_tsf_policy_tests)
+    add_dependencies(lakakey_contract_tests lakakey_boundary_tests)
 endif()
 
 # Windows-native settings companion (not a system IME).
