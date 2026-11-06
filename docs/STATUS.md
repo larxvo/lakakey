@@ -1,25 +1,31 @@
-# Lakakey — Implementation status and honest compatibility matrix
+# Lakakey — Implementation status
 
-Updated 2026-11-06.
+Updated 2026-11-06. This file distinguishes source code, reproducible tests, and real-device verification.
 
-| Feature | Status | Verified? |
-|---|---|---|
-| Windows EXE preview build | Go source can cross-compile to PE32+ x64 | Linux cross-compilation only; NOT tested on Windows hardware |
-| One-click Windows preview installer | Per-user installer source present | NOT tested on Windows hardware |
-| Settings VN/EN selector | Changes stored UI state only | Does not alter Windows language services |
-| Accent colors | Selector stored | Preview only |
-| Mascot Full/Minimal/Off | Selector stored | Preview only; no always-on native avatar in Go app |
-| Telex/VNI core | C++17 engine and regression tests | Linux tests passed in development; CI reruns tests |
-| Windows TSF IME | Experiment / probe source | **NOT operational; never register experimental DLL for daily use** |
-| Chrome/Word/Edge/VS Code system-wide input | Not implemented | Not supported |
-| macOS and Linux IME | Planned adapter architecture | Not built |
-| Code-signing and notarization | Not configured | Unsigned preview |
+| Area | Source status | Verification |
+| --- | --- | --- |
+| Windows Win32 Settings + tray | Implemented desktop shell | Go Windows x64 cross-compiled; native UI testing pending |
+| Per-user EXE installer | Builds and performs staged file replacement | Windows QA/rollback still required |
+| Quiet launch + inline Help/About | Implemented | Source review; real Windows visual QA pending |
+| Settings schema v2 / backups | Implemented | 7 Go tests passed on Linux |
+| C++17 Vietnamese mapping core | Telex/VNI baseline | Existing mapping tests; expanded native CI added |
+| Disabled/secure field contract | Defensive bypass added | New C++ contract tests pending CI |
+| Unicode scalar validation | Surrogate rejection added | New C++ contract tests pending CI |
+| Windows TSF text-service prototype | Native composition implementation in source | MSVC compile check added; not verified as working input |
+| Word/browser/IDE integration | Not delivered | Requires real Windows application QA |
+| Mascot animation runtime | Separate research assets | Not integrated with current desktop build |
+| macOS InputMethodKit | Planned | Not built |
+| Linux Fcitx5/IBus | Planned | Not built |
+| Signing and public stable release | Infrastructure work ongoing | Not signed, not production ready |
 
-### Product priorities
+## 0.11 engineering priorities
 
-1. Finish safe Windows TSF key sinks and composition session management, and test focus, password fields, selection replacement, Unicode and accessibility.
-2. Test real Windows 10/11 integrations on native apps and browsers, then publish signed setup.
-3. Deliver independent rigged 3D mascot animation runtime, keeping Full/Minimal/Off with minimal performance impact.
-4. Implement and test macOS InputMethodKit and Linux Fcitx5 / IBus adapters.
+1. Build native TSF v2 with Windows MSVC, resolve compilation and interface issues.
+2. Add deterministic input harness: focus, caret, secure fields, key passthrough and composition termination.
+3. Integrate actual mode selection with engine state and establish native end-to-end QA.
+4. Test installer update/recovery/uninstall on actual Windows 10/11 x64.
+5. Verify code signing, secure artifact integrity and rollback before stable release.
 
-Source repository is public; this does not imply an open-source license. Copyright © 2026 Larx Vo.
+See [FOUNDATION-0.11.md](FOUNDATION-0.11.md).
+
+© 2026 Larx Vo · https://vovinhlac.com
