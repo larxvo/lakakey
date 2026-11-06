@@ -44,7 +44,7 @@ jobs:
         run: |
           cmake -S . -B build-win -A x64 -DLAKAKEY_BUILD_TESTS=ON -DLAKAKEY_BUILD_TSF_V2=ON -DLAKAKEY_BUILD_EXPERIMENTAL_TSF=OFF
           if ($LASTEXITCODE -ne 0) { throw 'Native configuration failed' }
-          cmake --build build-win --config Release --target lakakey_tests lakakey_session_tests lakakey_contract_tests lakakey_typing_pipeline_tests lakakey_tsf_policy_tests LakakeyTsfV2 LakakeyTsfSmokeHost LakakeyTsfComSmoke LakakeyKeyboardLayoutSmoke LakakeyTsfRegistrationSmoke
+          cmake --build build-win --config Release --target lakakey_tests lakakey_session_tests lakakey_contract_tests lakakey_typing_pipeline_tests lakakey_tsf_policy_tests LakakeyTsfV2 LakakeyTsfSmokeHost LakakeyTsfComSmoke LakakeyKeyboardLayoutSmoke LakakeyTsfRegistrationSmoke LakakeyTsfLabCtl
           if ($LASTEXITCODE -ne 0) { throw 'Native build failed' }
           ctest --test-dir build-win -C Release --output-on-failure
           if ($LASTEXITCODE -ne 0) { throw 'Core regression tests failed' }
@@ -148,4 +148,5 @@ jobs:
             build-win/Release/LakakeyTsfComSmoke.exe
             build-win/Release/LakakeyKeyboardLayoutSmoke.exe
             build-win/Release/LakakeyTsfRegistrationSmoke.exe
+            build-win/Release/LakakeyTsfLabCtl.exe
 # Stable releases must pass native OS QA and publisher signing; no automatic release.
