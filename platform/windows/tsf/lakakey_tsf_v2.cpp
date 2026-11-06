@@ -164,6 +164,22 @@ public:
         if (current.enabled!=requested.enabled || current.scheme!=requested.scheme)
             engine_.set_settings(requested);
     }
+    // Try to end the live host composition before a focus/context switch.
+    // No key is consumed here; if the host denies a synchronous session,
+    // abandon local state rather than replaying stale text into the next field.
+    void retire_on_focus_change() {
+        if (composition_ && composition_context_ && client_ != TF_CLIENTID_NULL) {
+            ITfContext* previous = composition_context_;
+            previous->AddRef();
+            auto* edit = new KeyEdit(this, previous, U'\0', lakakey::KeyAction::Finalize);
+            HRESULT edit_result = E_FAIL;
+            (void)previous->RequestEditSession(client_, edit,
+                             TF_ES_SYNC | TF_ES_READWRITE, &edit_result);
+            edit->Release();
+            previous->Release();
+        }
+        reset_local();
+    }
     STDMETHODIMP Activate(ITfThreadMgr* mgr, TfClientId client) override {
         if (!mgr) return E_POINTER;
         Deactivate();
@@ -203,17 +219,17 @@ public:
         return S_OK;
     }
     STDMETHODIMP OnSetFocus(BOOL foreground) override {
-        if (!foreground) reset_local();
+        if (!foreground) retire_on_focus_change();
         return S_OK;
     }
     STDMETHODIMP OnInitDocumentMgr(ITfDocumentMgr*) override { return S_OK; }
-    STDMETHODIMP OnUninitDocumentMgr(ITfDocumentMgr*) override { reset_local(); return S_OK; }
+    STDMETHODIMP OnUninitDocumentMgr(ITfDocumentMgr*) override { retire_on_focus_change(); return S_OK; }
     STDMETHODIMP OnSetFocus(ITfDocumentMgr* current, ITfDocumentMgr* previous) override {
-        if (current != previous) reset_local();
+        if (current != previous) retire_on_focus_change();
         return S_OK;
     }
-    STDMETHODIMP OnPushContext(ITfContext*) override { reset_local(); return S_OK; }
-    STDMETHODIMP OnPopContext(ITfContext*) override { reset_local(); return S_OK; }
+    STDMETHODIMP OnPushContext(ITfContext*) override { retire_on_focus_change(); return S_OK; }
+    STDMETHODIMP OnPopContext(ITfContext*) override { retire_on_focus_change(); return S_OK; }
     STDMETHODIMP OnCompositionTerminated(TfEditCookie, ITfComposition* ended) override {
         if (ended == composition_) {
             // Do not release the same composition twice from an EndComposition callback.
