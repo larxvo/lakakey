@@ -18,7 +18,7 @@ public:
     void secure_field(bool secure) {secure_=secure;engine_.reset();}
     void configure(Settings settings) {engine_.set_settings(settings);engine_.reset();}
     SessionUpdate character(char32_t cp) {
-        if(secure_)return {};
+        if(secure_ || !engine_.settings().enabled)return {};
         auto r=engine_.feed(cp);
         return {r.preedit,r.commit,r.consumed};
     }

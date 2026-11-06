@@ -1,6 +1,6 @@
 # Hướng dẫn cài Lakakey Windows (bản PREVIEW)
 
-> **Lưu ý:** Đây là phần mềm xem trước Settings. **CHƯA gõ được tiếng Việt toàn hệ thống**. Tiếp tục sử dụng UniKey để gõ tiếng Việt.
+> **Lưu ý:** Đây là phần mềm xem trước Settings. **CHƯA gõ được tiếng Việt toàn hệ thống**. Tiếp tục sử dụng các bộ gõ khác để gõ tiếng Việt.
 
 ## Cách tải file EXE từ GitHub
 
@@ -11,7 +11,7 @@
 
 ## Gỡ cài đặt
 
-Windows Settings → Apps → Installed apps → Lakakey Desktop Preview → Uninstall. Bộ cài dành cho mỗi tài khoản (per-user) và không đụng vào UniKey.
+Windows Settings → Apps → Installed apps → Lakakey Desktop Preview → Uninstall. Bộ cài dành cho mỗi tài khoản (per-user) và không đụng vào các bộ gõ khác.
 
 ## Nếu Windows cảnh báo
 

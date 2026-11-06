@@ -1,0 +1,88 @@
+name: Windows Native Alpha — TSF build and installer QA
+
+on:
+  push:
+    branches:
+      - feature/tsf-native-edit-session
+    paths:
+      - 'platform/windows/tsf/**'
+      - 'src/**'
+      - 'include/**'
+      - 'CMakeLists.txt'
+      - 'packaging/windows/**'
+      - '.github/workflows/tsf-v2-ci.yml'
+  pull_request:
+    paths:
+      - 'platform/windows/tsf/**'
+      - 'src/**'
+      - 'include/**'
+      - 'CMakeLists.txt'
+      - 'packaging/windows/**'
+      - '.github/workflows/tsf-v2-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tsf-windows:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure prototype
+        shell: pwsh
+        run: cmake -S . -B build -A x64 -DLAKAKEY_BUILD_TSF_V2=ON -DLAKAKEY_BUILD_EXPERIMENTAL_TSF=OFF -DLAKAKEY_BUILD_TESTS=ON
+      - name: Build prototype and portable core
+        shell: pwsh
+        run: cmake --build build --config Release --target LakakeyTsfV2 lakakey_tests lakakey_session_tests --parallel
+      - name: Execute portable core tests
+        shell: pwsh
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Assert prototype DLL exists (do not install)
+        shell: pwsh
+        run: |
+          $dll = Get-ChildItem -Path build -Filter LakakeyTsfV2.dll -Recurse | Select-Object -First 1
+          if (-not $dll) { throw 'TSF prototype DLL was not created' }
+          Get-FileHash $dll.FullName -Algorithm SHA256
+      - name: Smoke test COM and TSF registration/unregistration on disposable CI runner
+        shell: pwsh
+        run: |
+          $dll = (Get-ChildItem -Path build -Filter LakakeyTsfV2.dll -Recurse | Select-Object -First 1).FullName
+          $regsvr = Join-Path $env:WINDIR 'System32\regsvr32.exe'
+          $clsid = 'HKCU:\Software\Classes\CLSID\{C67C6419-3D0F-4F56-9C4B-9D8A6E74A711}\InprocServer32'
+          try {
+            $registration = Start-Process -FilePath $regsvr -ArgumentList @('/s', "`"$dll`"") -Wait -PassThru
+            if ($registration.ExitCode -ne 0) { throw "TSF registration failed with exit code $($registration.ExitCode)" }
+            if (!(Test-Path $clsid)) { throw "COM per-user CLSID registration missing" }
+          }
+          finally {
+            $unregistration = Start-Process -FilePath $regsvr -ArgumentList @('/s','/u', "`"$dll`"") -Wait -PassThru
+            if ($unregistration.ExitCode -ne 0) { throw "TSF unregister failed with exit code $($unregistration.ExitCode)" }
+            if (Test-Path $clsid) { throw "COM per-user CLSID remains after unregister" }
+          }
+      - name: Install Inno Setup compiler
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup installation failed' }
+      - name: Package per-user alpha EXE (not a public release)
+        shell: pwsh
+        run: |
+          $dll = (Get-ChildItem -Path build -Filter LakakeyTsfV2.dll -Recurse | Select-Object -First 1).FullName
+          if (-not $dll) { throw 'Missing TSF DLL' }
+          $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $compiler)) { throw 'ISCC.exe missing' }
+          & $compiler "/DSourceDll=$dll" packaging/windows/LakakeyBeta.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed' }
+          $setup = Get-Item dist/LakakeyNativeAlphaSetup-x64.exe
+          if ($setup.Length -lt 100000) { throw 'Invalid setup EXE size' }
+          Get-FileHash $setup.FullName -Algorithm SHA256 | Format-List
+      - name: Store opt-in alpha installer as Actions artifact only
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lakakey-Native-Alpha-Windows-x64-UNVERIFIED
+          path: dist/LakakeyNativeAlphaSetup-x64.exe
+          if-no-files-found: error
+          retention-days: 30
+      # NO public release or auto-update until real Windows app tests pass.

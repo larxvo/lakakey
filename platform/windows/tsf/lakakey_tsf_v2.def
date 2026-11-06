@@ -1,0 +1,6 @@
+LIBRARY LakakeyTsfV2
+EXPORTS
+ DllGetClassObject=LakakeyDllGetClassObject PRIVATE
+ DllCanUnloadNow=LakakeyDllCanUnloadNow PRIVATE
+ DllRegisterServer=LakakeyDllRegisterServer PRIVATE
+ DllUnregisterServer=LakakeyDllUnregisterServer PRIVATE
