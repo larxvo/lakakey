@@ -68,6 +68,7 @@ int vni_tone(char32_t c) {
 std::string utf8_encode(const std::u32string& input) {
     std::string out;
     for (char32_t cp: input) {
+        if (cp >= 0xd800 && cp <= 0xdfff) throw std::invalid_argument("Surrogate scalar is not valid Unicode");
         if (cp <= 0x7f) out.push_back(static_cast<char>(cp));
         else if (cp <= 0x7ff) {
             out.push_back(static_cast<char>(0xc0 | (cp >> 6)));
@@ -247,6 +248,7 @@ std::u32string Engine::render_u32() const {
 }
 std::string Engine::preedit() const { return utf8_encode(render_u32()); }
 Result Engine::feed(char32_t codepoint) {
+    if (!settings_.enabled) { reset(); return {"","",false}; }
     if (!is_word_char(codepoint)) {
         Result r{preedit()+utf8_encode(std::u32string(1,codepoint)),"",true};
         reset(); return r;
@@ -261,11 +263,12 @@ Result Engine::feed(char32_t codepoint) {
     return {"",preedit(),true};
 }
 Result Engine::backspace() {
+    if (!settings_.enabled) { reset(); return {"","",false}; }
     if (raw_events_.empty()) return {"","",false};
     raw_events_.pop_back();
     letters_.clear(); tone_=0;
     for (auto cp: raw_events_) process_letter(cp);
     return {"",preedit(),true};
 }
-Result Engine::commit() { Result r{preedit(),"",true}; reset(); return r; }
+Result Engine::commit() { if (!settings_.enabled) { reset(); return {"","",false}; } Result r{preedit(),"",true}; reset(); return r; }
 }
