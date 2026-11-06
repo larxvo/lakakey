@@ -6,7 +6,7 @@
 
 ## 1. Tuyên ngôn sản phẩm
 
-Lakakey phải là bộ gõ tiếng Việt native có độ tin cậy cao để dùng cả ngày, không phải trình soạn thảo văn bản hay wrapper trang web. Giá trị vượt UniKey đến từ trải nghiệm đa nền tảng thống nhất, khả năng kiểm soát tương thích theo ứng dụng, gõ tắt hiệu quả, quản lý lỗi tốt, quyền riêng tư rõ ràng và cấu hình đơn giản. Không phức tạp hóa giao diện nhập liệu.
+Lakakey phải là bộ gõ tiếng Việt native có độ tin cậy cao để dùng cả ngày, không phải trình soạn thảo văn bản hay wrapper trang web. Giá trị của Lakakey đến từ trải nghiệm đa nền tảng thống nhất, khả năng kiểm soát tương thích theo ứng dụng, gõ tắt hiệu quả, quản lý lỗi tốt, quyền riêng tư rõ ràng và cấu hình đơn giản. Không phức tạp hóa giao diện nhập liệu.
 
 ### Nguyên tắc bắt buộc
 
