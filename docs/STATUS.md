@@ -14,16 +14,24 @@ Cập nhật ngày 06/11/2026 · Tác giả: Larx Vo · https://vovinhlac.com
 | Focus/composition cleanup | Có đường xử lý best-effort | Chưa có kiểm thử nhập liệu end-to-end |
 | Trường mật khẩu | Có kiểm tra bảo thủ với native EDIT | Browser/Office/Electron cần QA thực tế |
 | Tương thích Word/Chrome/Edge/VS Code | Chưa xác minh | Chưa đủ điều kiện dùng làm bộ gõ chính |
-| Mascot animation | Có nghiên cứu riêng | Chưa tích hợp vào desktop 0.13 |
+| Mascot animation | Có nghiên cứu riêng | Chưa tích hợp vào desktop 0.14 |
 | macOS / Linux adapters | Chưa triển khai phiên bản sử dụng được | Chưa kiểm thử |
 | Chữ ký và phát hành ổn định | Chưa có chữ ký số | Chưa production |
 
 ## Kết quả CI đã xác minh
 
-Tại 0.13, Windows CTest đạt **6/6**: engine, session, contract, TSF policy,
+Tại 0.14, Windows CTest 0.13 đạt **6/6**: engine, session, contract, TSF policy,
 keyboard layout, và COM smoke. Kiểm thử đăng ký/kiểm tra/gỡ đăng ký COM
 trong môi trường runner dùng tạm cũng đạt. Điều này xác nhận xây dựng và
 đăng ký TSF cơ bản, **không xác nhận nhập liệu hoạt động trong các ứng dụng thực**.
+
+## Kế hoạch kiểm chứng 0.14
+
+Mã 0.14 có kiểm thử bổ sung cho dấu câu/dấu cách và vòng đời ITfThreadMgr,
+bên cạnh bài thử gõ tổng hợp vào ô EDIT native trên Windows runner.
+**Không được báo cáo kiểm thử gõ thành công nếu báo cáo E2E có kết quả
+LIVE_INPUT_NOT_VERIFIED hoặc hệ điều hành từ chối kích hoạt.**
+Trạng thái chính xác xem báo cáo CI của PR #5.
 
 ## Hàng rào phát hành
 
@@ -33,6 +41,6 @@ IDE, vùng mật khẩu, con trỏ, focus, tổ hợp phím, đóng/mở tiến 
 tính năng rollback và gỡ cài đặt. Không được đánh đồng việc build thành công
 với một sản phẩm nhập liệu toàn hệ thống ổn định.
 
-Theo dõi: https://github.com/larxvo/lakakey/pull/4
+Theo dõi: https://github.com/larxvo/lakakey/pull/5
 
 © 2026 Larx Vo.
