@@ -1,9 +1,10 @@
-# Lakakey — trạng thái kỹ thuật
+# Lakakey — trạng thái kỹ thuật 0.14
 
 Cập nhật ngày 06/11/2026 · Tác giả: Larx Vo · https://vovinhlac.com
 
 | Thành phần | Trạng thái mã nguồn | Bằng chứng |
 | --- | --- | --- |
+| Atomic Space commit (TSF) | Hoàn thiện mã commit một phiên cho từ và dấu cách | Mô phỏng pipeline C++ và kiểm thử policy; chưa kiểm tra trong Word/Chrome |
 | Core Telex/VNI/Unicode | Đã triển khai nền tảng | C++ engine/session/contract tests đạt |
 | Windows Desktop Settings + tray | Đã triển khai | Go tests và Windows x64 build đạt |
 | Per-user EXE installer | Đã tạo | GitHub Actions Windows x64 build đạt; QA cập nhật/gỡ trên máy thật còn thiếu |
@@ -20,7 +21,7 @@ Cập nhật ngày 06/11/2026 · Tác giả: Larx Vo · https://vovinhlac.com
 
 ## Kết quả CI đã xác minh
 
-Tại 0.13, Windows CTest đạt **6/6**: engine, session, contract, TSF policy,
+Tại 0.13, Windows CTest đạt **6/6**; 0.14 bổ sung một bài kiểm thử giao dịch nhập liệu: engine, session, contract, TSF policy,
 keyboard layout, và COM smoke. Kiểm thử đăng ký/kiểm tra/gỡ đăng ký COM
 trong môi trường runner dùng tạm cũng đạt. Điều này xác nhận xây dựng và
 đăng ký TSF cơ bản, **không xác nhận nhập liệu hoạt động trong các ứng dụng thực**.
