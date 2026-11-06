@@ -18,13 +18,17 @@ constexpr wchar_t class_key[] =
     L"Software\\Classes\\CLSID\\{C67C6419-3D0F-4F56-9C4B-9D8A6E74A711}\\InprocServer32";
 using DllFunc = HRESULT (STDAPICALLTYPE*)();
 HWND field=nullptr;
+HWND password_field=nullptr;
 LRESULT CALLBACK on_window(HWND window, UINT msg, WPARAM w, LPARAM l) {
     if (msg == WM_CREATE) {
         HINSTANCE instance=reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(window,GWLP_HINSTANCE));
         field=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"",
             WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL,
             20,30,440,34,window,reinterpret_cast<HMENU>(110),instance,nullptr);
-        return field?0:-1;
+        password_field=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"",
+            WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_PASSWORD | ES_AUTOHSCROLL,
+            20,85,440,34,window,reinterpret_cast<HMENU>(111),instance,nullptr);
+        return (field && password_field)?0:-1;
     }
     if (msg == WM_DESTROY) { PostQuitMessage(0); return 0; }
     return DefWindowProcW(window,msg,w,l);
@@ -35,11 +39,10 @@ bool has_registry_key(HKEY root,const wchar_t* path) {
     if(code!=ERROR_SUCCESS)return false;
     RegCloseKey(key);return true;
 }
-bool set_mode() {
+bool set_mode(DWORD enabled=1, DWORD scheme=0) {
     HKEY key=nullptr;
     if(RegCreateKeyExW(HKEY_CURRENT_USER,input_key,0,nullptr,0,KEY_WRITE,
                        nullptr,&key,nullptr)!=ERROR_SUCCESS)return false;
-    const DWORD enabled=1, scheme=0;
     const LONG a=RegSetValueExW(key,L"Enabled",0,REG_DWORD,
                       reinterpret_cast<const BYTE*>(&enabled),sizeof(enabled));
     const LONG b=RegSetValueExW(key,L"Scheme",0,REG_DWORD,
@@ -63,13 +66,47 @@ bool send_letter(WORD vk) {
     key[1].ki.dwFlags=KEYEVENTF_KEYUP;
     return SendInput(2,key,sizeof(INPUT))==2;
 }
-std::wstring read_field() {
-    if(!field)return {};
-    const int size=GetWindowTextLengthW(field);
+std::wstring read_field(HWND target) {
+    if(!target)return {};
+    const int size=GetWindowTextLengthW(target);
     std::wstring value(static_cast<size_t>(size)+1,L'\0');
-    const int got=GetWindowTextW(field,&value[0],size+1);
+    const int got=GetWindowTextW(target,&value[0],size+1);
     value.resize(static_cast<size_t>(got));
     return value;
+}
+bool send_shifted(WORD vk) {
+    INPUT keys[4]{};
+    for(auto& k:keys) k.type=INPUT_KEYBOARD;
+    keys[0].ki.wVk=VK_SHIFT;
+    keys[1].ki.wVk=vk;
+    keys[2].ki.wVk=vk; keys[2].ki.dwFlags=KEYEVENTF_KEYUP;
+    keys[3].ki.wVk=VK_SHIFT; keys[3].ki.dwFlags=KEYEVENTF_KEYUP;
+    return SendInput(4,keys,sizeof(INPUT))==4;
+}
+bool run_case(HWND target, const wchar_t* name, const WORD* keys,
+              size_t count, const std::wstring& expected, bool shifted_final=false) {
+    SetWindowTextW(target,L"");
+    SetFocus(target);
+    pump_for(160);
+    if(GetFocus()!=target) {
+        std::wcerr << L"LIVE_INPUT_NOT_VERIFIED: cannot focus " << name << L"\\n";
+        return false;
+    }
+    for(size_t i=0;i<count;++i) {
+        bool ok=(shifted_final && i==count-1) ? send_shifted(keys[i]) : send_letter(keys[i]);
+        if(!ok) return false;
+        pump_for(55);
+    }
+    pump_for(250);
+    const std::wstring actual=read_field(target);
+    if(actual!=expected) {
+        // Do not print actual text; this is synthetic data only.
+        std::wcerr << L"LIVE_INPUT_NOT_VERIFIED: " << name
+                   << L" (actual code units=" << actual.size() << L")\\n";
+        return false;
+    }
+    std::wcout << L"LIVE_INPUT_CASE_PASS: " << name << L"\\n";
+    return true;
 }
 void report_failure(const wchar_t* stage, HRESULT status=E_FAIL) {
     std::wcerr<<L"LIVE_INPUT_NOT_VERIFIED: "<<stage<<L" (0x"<<std::hex
@@ -127,28 +164,36 @@ int wmain(int argc,wchar_t** argv) {
         wc.hCursor=LoadCursorW(nullptr,IDC_IBEAM);
         if(!RegisterClassW(&wc)){report_failure(L"Window class");break;}
         window=CreateWindowExW(0,wc.lpszClassName,L"Lakakey Native Input Lab",
-             WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,510,170,
+             WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,510,230,
              nullptr,nullptr,module,nullptr);
-        if(!window||!field){report_failure(L"Edit control not created");break;}
+        if(!window||!field||!password_field){report_failure(L"Edit control not created");break;}
         ShowWindow(window,SW_SHOWNORMAL);
         SetForegroundWindow(window); SetFocus(field);
         pump_for(450);
         if(GetFocus()!=field){report_failure(L"Runner has no interactive keyboard focus");break;}
-        const WORD sequence[]={ 'T','I','E','E','N','G','S',VK_SPACE };
-        bool sent=true;
-        for(const WORD key:sequence) {
-            if(!send_letter(key)){sent=false;break;}
-            pump_for(55);
-        }
-        if(!sent){report_failure(L"SendInput not available to isolated host");break;}
-        pump_for(600);
-        const std::wstring actual=read_field();
-        if(actual!=L"tiếng ") {
-            // Synthetic fixed test data only: never print user input.
-            std::wcerr<<L"LIVE_INPUT_NOT_VERIFIED: input differs from expected "
-                     <<L"(actual UTF16 units="<<actual.size()<<L")\n";
-            break;
-        }
+        const WORD telex[]={ 'T','I','E','E','N','G','S',VK_SPACE };
+        if(!run_case(field,L"Telex basic EDIT",telex,8,L"tiếng "))break;
+
+        const WORD punctuation[]={ 'C','H','A','O','F','1' };
+        if(!run_case(field,L"Telex punctuation EDIT",punctuation,6,L"chào!",true))break;
+
+        if(!set_mode(1,1)){report_failure(L"Switching to VNI");break;}
+        pump_for(130);
+        const WORD vni[]={ 'T','I','E','6','N','G','1',VK_SPACE };
+        if(!run_case(field,L"VNI native EDIT",vni,8,L"tiếng "))break;
+
+        if(!set_mode(0,0)){report_failure(L"Disabling native composition");break;}
+        pump_for(130);
+        if(!run_case(field,L"Disabled-mode pass-through",telex,8,L"tieengs "))break;
+
+        if(!set_mode(1,0)){report_failure(L"Re-enabling Telex");break;}
+        pump_for(130);
+        if(!run_case(password_field,L"Password-field pass-through",telex,8,L"tieengs "))break;
+
+        // A fresh field after leaving a password control must not inherit
+        // that control's composition state. Punctuation is tested above.
+        const WORD return_to_edit[]={ 'D','D','O','O','F',VK_SPACE };
+        if(!run_case(field,L"Focus return native EDIT",return_to_edit,6,L"đồ "))break;
         typed=true;
     } while(false);
     if(window)DestroyWindow(window);
@@ -162,6 +207,6 @@ int wmain(int argc,wchar_t** argv) {
     if(SUCCEEDED(init))CoUninitialize();
     (void)RegDeleteTreeW(HKEY_CURRENT_USER,input_key);
     if(!typed)return 2;
-    std::wcout<<L"LIVE_INPUT_VERIFIED: native EDIT synthesized Telex input\n";
+    std::wcout<<L"LIVE_INPUT_VERIFIED: native EDIT Telex/VNI, punctuation, focus, pass-through\n";
     return 0;
 }
