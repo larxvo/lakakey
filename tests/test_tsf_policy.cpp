@@ -23,7 +23,11 @@ int main() {
     plain.composing=true; plain.has_preedit=true; verify(plain,KeyAction::Erase,true);
     plain.has_preedit=false; verify(plain,KeyAction::Pass,false);
     plain.backspace=false; plain.boundary=true;
-    verify(plain,KeyAction::Finalize,false);
+    verify(plain,KeyAction::Pass,false);
+    plain.space=true;
+    plain.has_preedit=true;
+    verify(plain,KeyAction::CommitSpace,true);
+    plain.space=false;
     plain.composing=false; verify(plain,KeyAction::Pass,false);
     plain.composing=true; plain.character=U'b';
     verify(plain,KeyAction::Insert,true);
@@ -33,10 +37,10 @@ int main() {
         t.shortcut_modifier=(flags&4)!=0; t.composing=(flags&8)!=0;
         t.same_context=(flags&16)!=0; t.has_preedit=(flags&32)!=0;
         t.backspace=(flags&64)!=0;
-        for (int kind=0;kind<3;++kind) {
-            t.character=kind==1?U'c':U'\0'; t.boundary=kind==2;
+        for (int kind=0;kind<4;++kind) {
+            t.character=kind==1?U'c':U'\0'; t.boundary=kind==2; t.space=kind==3;
             KeyPlan p=plan_key(t);
-            demand(!p.eat_on_success || p.action==KeyAction::Insert || p.action==KeyAction::Erase,
+            demand(!p.eat_on_success || p.action==KeyAction::Insert || p.action==KeyAction::Erase || p.action==KeyAction::CommitSpace,
                    "host key incorrectly consumed");
             if (t.secure || !t.enabled || t.shortcut_modifier || !t.same_context)
                 demand(p.action==KeyAction::Pass,"security or focus bypass failed");
