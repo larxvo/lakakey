@@ -1,4 +1,4 @@
-Lakakey 0.11.0 — Windows Desktop development build
+Lakakey 0.12.0 — Windows Desktop development build
 Created by Larx Vo · https://vovinhlac.com
 
 Install: launch LakakeyDesktopSetup.exe.

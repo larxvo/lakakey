@@ -406,7 +406,7 @@ func onCommand(wp uintptr) {
 	case ID_ABOUT:
 		detailMode = "about"
 		cfg.Expanded = true
-		setText(detailLabel, "LAKAKEY  ·  Windows Desktop\r\n\r\nỨng dụng nhập liệu tiếng Việt\r\nPhiên bản 0.11.0\r\n\r\nTác giả: Larx Vo\r\nWebsite: https://vovinhlac.com\r\n\r\nMiễn phí · Hoạt động cục bộ · Không tài khoản")
+		setText(detailLabel, "LAKAKEY  ·  Windows Desktop\r\n\r\nỨng dụng nhập liệu tiếng Việt\r\nPhiên bản 0.12.0\r\n\r\nTác giả: Larx Vo\r\nWebsite: https://vovinhlac.com\r\n\r\nMiễn phí · Hoạt động cục bộ · Không tài khoản")
 		changed = false
 	case ID_GUIDE:
 		detailMode = "guide"

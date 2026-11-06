@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 #include "lakakey_engine.h"
+#include "lakakey_tsf_policy.h"
 
 namespace {
 constexpr CLSID kClsid = {0xc67c6419,0x3d0f,0x4f56,{0x9c,0x4b,0x9d,0x8a,0x6e,0x74,0xa7,0x11}};
@@ -36,17 +37,24 @@ bool blocked_modifiers() {
            (GetKeyState(VK_LWIN) & 0x8000) || (GetKeyState(VK_RWIN) & 0x8000);
 }
 bool is_secure(ITfContext* ctx) {
-    TF_STATUS s{};
-    // Fail closed when the host does not expose its input security status.
-    if (!ctx || FAILED(ctx->GetStatus(&s))) return true;
-    // Host-provided flags are advisory; an end-to-end secure-field gate is
-    // still needed before a production IME release.
-#ifdef TF_SS_PASSWORD
-    if (s.dwStaticFlags & TF_SS_PASSWORD) return true;
-#endif
-#ifdef TF_SS_TRANSITORY
-    if (s.dwStaticFlags & TF_SS_TRANSITORY) return true;
-#endif
+    if (!ctx) return true;
+    TF_STATUS status{};
+    if (FAILED(ctx->GetStatus(&status))) return true;
+    // These are SDK status constants, not preprocessor feature macros.
+    // Treat transitory contexts conservatively. This remains a
+    // supplementary check, not proof of protection across browser frameworks.
+    if (status.dwStaticFlags & TF_SS_TRANSITORY)
+        return true;
+    // A conventional Win32 EDIT field exposes the password style.
+    // Do not inspect its contents; only the window style is queried.
+    HWND focus = GetFocus();
+    if (focus) {
+        wchar_t class_name[48]{};
+        if (GetClassNameW(focus, class_name, 48) &&
+            CompareStringOrdinal(class_name, -1, L"Edit", -1, TRUE) == CSTR_EQUAL &&
+            (GetWindowLongPtrW(focus, GWL_STYLE) & ES_PASSWORD))
+            return true;
+    }
     return false;
 }
 char32_t ascii_from_vk(WPARAM vk) {
@@ -92,10 +100,10 @@ class KeyEdit final : public ITfEditSession {
     std::atomic<ULONG> refs_{1};
     Service* service_;
     ITfContext* context_;
-    enum class Action { Letter, Delete, Finish } action_;
+    lakakey::KeyAction action_;
     char32_t cp_;
 public:
-    KeyEdit(Service* service, ITfContext* ctx, char32_t cp, bool backspace, bool finish);
+    KeyEdit(Service* service, ITfContext* ctx, char32_t cp, lakakey::KeyAction action);
     ~KeyEdit();
     STDMETHODIMP QueryInterface(REFIID id, void** obj) override;
     STDMETHODIMP_(ULONG) AddRef() override { return ++refs_; }
@@ -214,20 +222,34 @@ public:
         if (!eaten) return E_POINTER;
         *eaten = FALSE; return S_OK;
     }
+    // Route both TSF probes and real key events through the exact same policy.
+    // The host always receives navigation, punctuation and shortcuts.
+    static bool is_boundary_key(WPARAM vk) noexcept {
+        return vk == VK_SPACE || vk == VK_RETURN || vk == VK_TAB ||
+            vk == VK_LEFT || vk == VK_RIGHT || vk == VK_UP || vk == VK_DOWN ||
+            vk == VK_HOME || vk == VK_END || vk == VK_DELETE || vk == VK_ESCAPE ||
+            vk == VK_DECIMAL || (vk >= VK_OEM_1 && vk <= VK_OEM_3) ||
+            (vk >= VK_OEM_4 && vk <= VK_OEM_8);
+    }
+    lakakey::KeyPlan route(ITfContext* ctx, WPARAM vk) {
+        refresh_input_preferences();
+        const bool active = composition_ != nullptr;
+        return lakakey::plan_key({
+            engine_.settings().enabled,
+            is_secure(ctx),
+            blocked_modifiers(),
+            active,
+            !active || composition_context_ == ctx,
+            !engine_.preedit().empty(),
+            is_boundary_key(vk),
+            vk == VK_BACK,
+            ascii_from_vk(vk)
+        });
+    }
     STDMETHODIMP OnTestKeyDown(ITfContext* ctx, WPARAM vk, LPARAM, BOOL* eaten) override {
         if (!eaten) return E_POINTER;
-        *eaten = FALSE;
-        refresh_input_preferences();
-        if (!engine_.settings().enabled) return S_OK;
-        if (blocked_modifiers() || is_secure(ctx)) return S_OK;
-        const bool composing = composition_ != nullptr;
-        const bool finish = vk == VK_SPACE || vk == VK_RETURN || vk == VK_TAB ||
-            vk == VK_LEFT || vk == VK_RIGHT || vk == VK_UP || vk == VK_DOWN ||
-            vk == VK_HOME || vk == VK_END || vk == VK_DELETE ||
-            vk == VK_ESCAPE || vk == VK_DECIMAL ||
-            (vk >= VK_OEM_1 && vk <= VK_OEM_3) ||
-            (vk >= VK_OEM_4 && vk <= VK_OEM_8);
-        *eaten = (ascii_from_vk(vk) != 0 || (composing && (vk == VK_BACK || finish))) ? TRUE : FALSE;
+        const auto decision = route(ctx, vk);
+        *eaten = decision.eat_on_success ? TRUE : FALSE;
         return S_OK;
     }
     STDMETHODIMP OnTestKeyUp(ITfContext*, WPARAM, LPARAM, BOOL* eaten) override {
@@ -241,30 +263,17 @@ public:
     STDMETHODIMP OnKeyDown(ITfContext* ctx, WPARAM vk, LPARAM, BOOL* eaten) override {
         if (!eaten) return E_POINTER;
         *eaten = FALSE;
-        refresh_input_preferences();
-        if (!engine_.settings().enabled) return S_OK;
-        if (blocked_modifiers() || is_secure(ctx)) return S_OK;
-        char32_t cp = ascii_from_vk(vk);
-        const bool backspace = vk == VK_BACK && composition_ != nullptr;
-        // A boundary must finalize the active composition before Windows handles it.
-        // Do not swallow the boundary; the host still owns punctuation/navigation.
-        const bool finish = (vk == VK_SPACE || vk == VK_RETURN || vk == VK_TAB ||
-                             vk == VK_LEFT || vk == VK_RIGHT || vk == VK_UP || vk == VK_DOWN ||
-                             vk == VK_HOME || vk == VK_END || vk == VK_DELETE ||
-                             vk == VK_ESCAPE || vk == VK_DECIMAL ||
-                             (vk >= VK_OEM_1 && vk <= VK_OEM_3) ||
-                             (vk >= VK_OEM_4 && vk <= VK_OEM_8));
-        if (!cp && !backspace && !(finish && composition_)) return S_OK;
-        if (composition_ && composition_context_ != ctx) reset_local();
-        KeyEdit* edit = new KeyEdit(this, ctx, cp, backspace, finish);
+        const auto decision = route(ctx, vk);
+        if (decision.action == lakakey::KeyAction::Pass) return S_OK;
+        KeyEdit* edit = new KeyEdit(this, ctx, ascii_from_vk(vk), decision.action);
         HRESULT session_result = E_FAIL;
-        const HRESULT request = ctx->RequestEditSession(client_, edit,
-                                  TF_ES_SYNC | TF_ES_READWRITE, &session_result);
+        const HRESULT request = ctx->RequestEditSession(
+            client_, edit, TF_ES_SYNC | TF_ES_READWRITE, &session_result);
         edit->Release();
-        // Fail open: never drop a key when TSF declines a synchronous edit session.
-        if (cp || backspace)
-            *eaten = SUCCEEDED(request) && session_result == S_OK ? TRUE : FALSE;
-        // Finish leaves the delimiter/navigation key to the host after committing.
+        // Fail open on unsuccessful edit sessions. Never eat the original key
+        // unless text was successfully committed to the application's TSF context.
+        *eaten = decision.eat_on_success && SUCCEEDED(request) &&
+                 session_result == S_OK ? TRUE : FALSE;
         return S_OK;
     }
     HRESULT ensure_composition(TfEditCookie cookie, ITfContext* ctx) {
@@ -327,9 +336,8 @@ public:
     friend class KeyEdit;
 };
 
-KeyEdit::KeyEdit(Service* s, ITfContext* c, char32_t cp, bool backspace, bool finish)
-    : service_(s), context_(c), action_(finish ? Action::Finish :
-      (backspace ? Action::Delete : Action::Letter)), cp_(cp) {
+KeyEdit::KeyEdit(Service* s, ITfContext* c, char32_t cp, lakakey::KeyAction action)
+    : service_(s), context_(c), action_(action), cp_(cp) {
     service_->AddRef(); context_->AddRef();
 }
 KeyEdit::~KeyEdit() { context_->Release(); service_->Release(); }
@@ -342,9 +350,9 @@ STDMETHODIMP KeyEdit::QueryInterface(REFIID id, void** obj) {
     return E_NOINTERFACE;
 }
 STDMETHODIMP KeyEdit::DoEditSession(TfEditCookie cookie) {
-    if (action_ == Action::Finish) return service_->finish(cookie);
+    if (action_ == lakakey::KeyAction::Finalize) return service_->finish(cookie);
     lakakey::Engine next = service_->engine_;
-    lakakey::Result result = action_ == Action::Delete ? next.backspace() : next.feed(cp_);
+    lakakey::Result result = action_ == lakakey::KeyAction::Erase ? next.backspace() : next.feed(cp_);
     if (!result.consumed) return S_FALSE;
     // The core emits committed text only on word boundaries / safety limits.
     // In that rare overflow case end the old composition before starting another.

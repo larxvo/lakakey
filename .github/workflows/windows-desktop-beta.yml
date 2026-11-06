@@ -1,4 +1,4 @@
-name: Lakakey 0.11 — Native core, desktop and TSF checks
+name: Lakakey 0.12 — TSF key policy, native core and desktop checks
 on:
   push:
     branches: [main, feature/tsf-native-edit-session]
@@ -42,7 +42,7 @@ jobs:
         run: |
           cmake -S . -B build-win -A x64 -DLAKAKEY_BUILD_TESTS=ON -DLAKAKEY_BUILD_TSF_V2=ON -DLAKAKEY_BUILD_EXPERIMENTAL_TSF=OFF
           if ($LASTEXITCODE -ne 0) { throw 'Native configuration failed' }
-          cmake --build build-win --config Release --target lakakey_tests lakakey_session_tests lakakey_contract_tests LakakeyTsfV2
+          cmake --build build-win --config Release --target lakakey_tests lakakey_session_tests lakakey_contract_tests lakakey_tsf_policy_tests LakakeyTsfV2 LakakeyTsfSmokeHost
           if ($LASTEXITCODE -ne 0) { throw 'Native build failed' }
           ctest --test-dir build-win -C Release --output-on-failure
           if ($LASTEXITCODE -ne 0) { throw 'Core regression tests failed' }
@@ -82,7 +82,7 @@ jobs:
       - name: Upload runnable desktop-only beta
         uses: actions/upload-artifact@v4
         with:
-          name: Lakakey-0.11-Windows-x64-Dev
+          name: Lakakey-0.12-Windows-x64-Dev
           if-no-files-found: error
           retention-days: 30
           path: |
@@ -95,5 +95,7 @@ jobs:
           name: TSF-v2-research-NOT-FOR-END-USERS
           if-no-files-found: error
           retention-days: 14
-          path: build-win/Release/LakakeyTsfV2.dll
+          path: |
+            build-win/Release/LakakeyTsfV2.dll
+            build-win/Release/LakakeyTsfSmokeHost.exe
 # Stable releases must pass native OS QA and publisher signing; no automatic release.

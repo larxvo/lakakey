@@ -1,64 +1,78 @@
-# Lakakey — Vietnamese Input Platform
+# Lakakey
 
-**Created by Larx Vo** · [vovinhlac.com](https://vovinhlac.com) · © 2026 Larx Vo
+**A lightweight, local-first Vietnamese input platform for Windows, macOS and Linux.**
 
-Lakakey is a free, local-first Vietnamese input platform under active development. The Windows application uses native Win32 controls and a system-tray companion; a portable C++ input engine and a Windows Text Services Framework (TSF) prototype are maintained separately.
+Created by **Larx Vo** · [vovinhlac.com](https://vovinhlac.com) · Copyright © 2026.
 
-## Windows 0.11 Native Foundation
+## Development status — 0.12 Native Input Integration
 
-- Compact/expanded native settings and VN/EN *preference* state in the tray.
-- Per-user Windows desktop installer with Start Menu entry and uninstall support.
-- Quiet startup and inline help/about instead of repetitive popups.
-- Safe staged file replacement during upgrades; no deleting the installed executable before a replacement succeeds.
-- Settings schema v2: atomic writes, last-valid backup recovery, migration and downgrade protection.
-- **Native preference bridge:** the Windows desktop publishes only VN/EN and Telex/VNI settings to a per-user registry key; the experimental TSF host can read them before starting a composition. This is not evidence of real-host typing compatibility.
-- Separate C++ core with Telex/VNI baseline, Unicode validation, secure-field and disabled-mode bypass contracts.
-- CI builds Windows desktop and an experimental TSF DLL separately; native engine regression tests run on Linux/Windows.
+Lakakey is under active development. Its portable C++ engine includes baseline Telex/VNI support, Unicode handling and unit tests. A native Windows desktop app provides Settings, system tray, hotkeys and local preferences. A Windows Text Services Framework (TSF) implementation is being tested separately.
 
-**Input integration status:** The current downloadable Windows desktop installer does **not** register the experimental TSF DLL. It is a desktop development build, not a finished system-wide input processor. The TSF implementation needs integration and native application QA before it can ship. No keyboard hooks or input interception are installed by this package.
+**The current Windows desktop installer does not activate system-wide Vietnamese input.** The native TSF DLL is experimental and is not installed by the public desktop setup. Compatibility with Notepad, Office, browsers and development editors remains a release gate, not a completed claim.
 
-## Repository
+## What's in 0.12
 
-- `src/engine.cpp` and `include/` — core rules, Unicode and input-session contract
-- `platform/windows/tsf/lakakey_tsf_v2.cpp` — experimental Windows TSF text-service implementation
-- `desktop/windows/` — native Windows UI, tray and persisted settings
-- `desktop/installer/` — per-user Windows desktop setup
-- `tests/` — deterministic regression tests
-- `.github/workflows/windows-desktop-beta.yml` — automated core, TSF compile and installer checks
-- `docs/FOUNDATION-0.11.md` — engineering report, limitations and release gates
-- `docs/STATUS.md` — verified vs. incomplete features
+- Shared, deterministic TSF key-routing contract for probe and edit paths; punctuation/navigation remain available to the host.
+- Fail-open handling for rejected synchronous edit sessions.
+- C++ policy tests for mode, modifiers, focus, backspace and context state.
+- Faster Windows tray → input-preference bridge, using native registry calls without spawning `reg.exe` on each change.
+- Optional native test host with text, multiline and password fields.
+- Windows x64 executable builds, separate research-only TSF build artifacts and CI configuration.
+- Quiet, locally stored settings; no login, marketing popups or typed-text telemetry.
 
-## Download a development build
+## Download and run desktop development builds
 
-Open [GitHub Actions — Lakakey Native CI](https://github.com/larxvo/lakakey/actions/workflows/windows-desktop-beta.yml), select a successful run and download the **Lakakey-0.11-Windows-x64-Dev** artifact. Source changes live in [PR #1](https://github.com/larxvo/lakakey/pull/1) until reviewed and merged.
+Use [GitHub Actions](https://github.com/larxvo/lakakey/actions/workflows/windows-desktop-beta.yml) after a **successful** run on the relevant branch; download the `Lakakey-0.12-Windows-x64-Dev` artifact. Artifacts may require an authenticated GitHub session. This is an **unsigned development build**: verify its origin and SHA-256 and do not bypass security warnings without assessing the risk.
 
-The unsigned development installer has not been verified on all Windows 10/11 configurations. Verify provenance and SHA-256; do not ignore operating-system security warnings without assessment.
+When available, run `LakakeyDesktopSetup.exe`. It installs the desktop settings/tray application for the current user and provides an uninstall entry. The experimental TSF DLL remains separate.
 
-## Build and verify
+## Source organization
 
-Linux:
-```sh
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DLAKAKEY_BUILD_TESTS=ON
-cmake --build build -j2
+| Path | Purpose |
+| --- | --- |
+| `include/lakakey_engine.h`, `src/engine.cpp` | Portable Unicode/Telex/VNI core |
+| `include/lakakey_session.h` | Host-neutral input session |
+| `include/lakakey_tsf_policy.h` | Pure key-routing contract |
+| `platform/windows/tsf/` | Experimental TSF adapter and QA host |
+| `desktop/windows/` | Native Windows Settings, tray, local preferences |
+| `desktop/installer/` | Per-user Windows desktop installer |
+| `tests/` | Core, session, Unicode and TSF policy regression tests |
+| `docs/NATIVE-INPUT-0.12.md` | Verification status and Windows QA checklist |
+
+## Building and testing
+
+Portable C++ core (Linux, or equivalent development environment):
+
+```bash
+cmake -S . -B build -DLAKAKEY_BUILD_TESTS=ON
+cmake --build build
 ctest --test-dir build --output-on-failure
-go test -race -count=1 ./desktop/windows
 ```
 
-Windows (Go 1.23+, MSVC/CMake for TSF):
+Windows desktop (Go 1.23+):
+
 ```powershell
 go test ./desktop/windows
-go build -trimpath -ldflags '-s -w -H=windowsgui' -o desktop/installer/payload/LakakeyDesktop.exe ./desktop/windows
-go build -trimpath -ldflags '-s -w -H=windowsgui' -o LakakeyDesktopSetup.exe ./desktop/installer
-cmake -S . -B build-win -A x64 -DLAKAKEY_BUILD_TSF_V2=ON
-cmake --build build-win --config Release --target LakakeyTsfV2
+go build -o desktop/installer/payload/LakakeyDesktop.exe ./desktop/windows
+go build -o LakakeyDesktopSetup.exe ./desktop/installer
 ```
 
-**Do not register the TSF research DLL on a daily-use machine.** It is not included in the installer.
+Experimental Windows native adapter requires Windows SDK and Visual Studio/MSVC:
 
-## Privacy, licensing and attribution
+```powershell
+cmake -S . -B build-win -A x64 -DLAKAKEY_BUILD_TSF_V2=ON -DLAKAKEY_BUILD_TESTS=ON
+cmake --build build-win --config Release --target LakakeyTsfV2 LakakeyTsfSmokeHost lakakey_tsf_policy_tests
+ctest --test-dir build-win -C Release --output-on-failure
+```
 
-Core operation is intended to be offline. No accounts, ads or telemetry are required. The desktop application does not log key contents. Input interception is not part of this installer.
+Do not register the experimental adapter on a daily-use computer. Native integration and secure-field handling must be validated in an isolated test environment.
 
-This public repository does not yet have an open-source license; public visibility is not an automatic grant of reuse or redistribution rights. Build artifacts are supplied for evaluation only.
+## Product principles
 
-© 2026 **Larx Vo** · [vovinhlac.com](https://vovinhlac.com)
+Local-first. No account, advertising or cloud logging of typed content. Native performance, clear user control and minimal interruptions. Unsupported options must not masquerade as functional features.
+
+## Licensing and contributions
+
+The repository is public for development visibility. No general redistribution license has been granted at this time. Use GitHub Issues for bug reports; do not attach sensitive typing samples or personal content.
+
+Maintainer: **Larx Vo** — [vovinhlac.com](https://vovinhlac.com).
