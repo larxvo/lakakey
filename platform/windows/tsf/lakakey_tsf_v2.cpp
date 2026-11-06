@@ -57,19 +57,24 @@ bool is_secure(ITfContext* ctx) {
     }
     return false;
 }
-char32_t ascii_from_vk(WPARAM vk) {
-    if (vk >= 'A' && vk <= 'Z') {
-        const bool upper = ((GetKeyState(VK_SHIFT) & 0x8000) != 0) !=
-                           ((GetKeyState(VK_CAPITAL) & 1) != 0);
-        return static_cast<char32_t>(upper ? vk : vk + 32);
-    }
-    if (vk >= '0' && vk <= '9') {
-        if (GetKeyState(VK_SHIFT) & 0x8000) return 0;
-        return static_cast<char32_t>(vk);
-    }
-    if (vk >= VK_NUMPAD0 && vk <= VK_NUMPAD9)
-        return static_cast<char32_t>('0' + vk - VK_NUMPAD0);
-    return 0; // Unknown layouts: let the application handle the key.
+// Translate through the active keyboard layout rather than assuming US QWERTY.
+// ToUnicodeEx bit 2 avoids mutating dead-key composition state (Windows 10+).
+// Punctuation, dead keys, AltGr and non-ASCII input remain owned by the host.
+char32_t ascii_from_key(WPARAM vk, LPARAM key_data) {
+    BYTE state[256]{};
+    if (!GetKeyboardState(state)) return U'\0';
+    const UINT scan_code = (static_cast<UINT>(key_data) >> 16) & 0xffU;
+    wchar_t translated[8]{};
+    constexpr UINT do_not_modify_keyboard_state = 0x04U;
+    const int count = ToUnicodeEx(static_cast<UINT>(vk), scan_code,
+                                  state, translated, 8,
+                                  do_not_modify_keyboard_state, GetKeyboardLayout(0));
+    if (count != 1) return U'\0';
+    const wchar_t ch = translated[0];
+    const bool letter = (ch >= L'a' && ch <= L'z') ||
+                        (ch >= L'A' && ch <= L'Z');
+    const bool digit = ch >= L'0' && ch <= L'9';
+    return letter || digit ? static_cast<char32_t>(ch) : U'\0';
 }
 
 // Per-user preference bridge from LakakeyDesktop. Only two DWORD values are
@@ -231,10 +236,15 @@ public:
             vk == VK_DECIMAL || (vk >= VK_OEM_1 && vk <= VK_OEM_3) ||
             (vk >= VK_OEM_4 && vk <= VK_OEM_8);
     }
-    lakakey::KeyPlan route(ITfContext* ctx, WPARAM vk) {
+    struct RoutedKey {
+        lakakey::KeyPlan plan;
+        char32_t character = U'\0';
+    };
+    RoutedKey route(ITfContext* ctx, WPARAM vk, LPARAM key_data) {
         refresh_input_preferences();
         const bool active = composition_ != nullptr;
-        return lakakey::plan_key({
+        const char32_t character = ascii_from_key(vk, key_data);
+        const auto plan = lakakey::plan_key({
             engine_.settings().enabled,
             is_secure(ctx),
             blocked_modifiers(),
@@ -243,13 +253,14 @@ public:
             !engine_.preedit().empty(),
             is_boundary_key(vk),
             vk == VK_BACK,
-            ascii_from_vk(vk)
+            character
         });
+        return {plan, character};
     }
-    STDMETHODIMP OnTestKeyDown(ITfContext* ctx, WPARAM vk, LPARAM, BOOL* eaten) override {
+    STDMETHODIMP OnTestKeyDown(ITfContext* ctx, WPARAM vk, LPARAM key_data, BOOL* eaten) override {
         if (!eaten) return E_POINTER;
-        const auto decision = route(ctx, vk);
-        *eaten = decision.eat_on_success ? TRUE : FALSE;
+        const auto decision = route(ctx, vk, key_data);
+        *eaten = decision.plan.eat_on_success ? TRUE : FALSE;
         return S_OK;
     }
     STDMETHODIMP OnTestKeyUp(ITfContext*, WPARAM, LPARAM, BOOL* eaten) override {
@@ -260,19 +271,19 @@ public:
         if (!eaten) return E_POINTER;
         *eaten = FALSE; return S_OK;
     }
-    STDMETHODIMP OnKeyDown(ITfContext* ctx, WPARAM vk, LPARAM, BOOL* eaten) override {
+    STDMETHODIMP OnKeyDown(ITfContext* ctx, WPARAM vk, LPARAM key_data, BOOL* eaten) override {
         if (!eaten) return E_POINTER;
         *eaten = FALSE;
-        const auto decision = route(ctx, vk);
-        if (decision.action == lakakey::KeyAction::Pass) return S_OK;
-        KeyEdit* edit = new KeyEdit(this, ctx, ascii_from_vk(vk), decision.action);
+        const auto decision = route(ctx, vk, key_data);
+        if (decision.plan.action == lakakey::KeyAction::Pass) return S_OK;
+        KeyEdit* edit = new KeyEdit(this, ctx, decision.character, decision.plan.action);
         HRESULT session_result = E_FAIL;
         const HRESULT request = ctx->RequestEditSession(
             client_, edit, TF_ES_SYNC | TF_ES_READWRITE, &session_result);
         edit->Release();
         // Fail open on unsuccessful edit sessions. Never eat the original key
         // unless text was successfully committed to the application's TSF context.
-        *eaten = decision.eat_on_success && SUCCEEDED(request) &&
+        *eaten = decision.plan.eat_on_success && SUCCEEDED(request) &&
                  session_result == S_OK ? TRUE : FALSE;
         return S_OK;
     }
