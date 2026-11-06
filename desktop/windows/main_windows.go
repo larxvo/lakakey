@@ -43,6 +43,8 @@ var (
 	findWindow          = user32.NewProc("FindWindowW")
 	registerWindowMsg   = user32.NewProc("RegisterWindowMessageW")
 	registerHotKey      = user32.NewProc("RegisterHotKey")
+	setTimer            = user32.NewProc("SetTimer")
+	killTimer           = user32.NewProc("KillTimer")
 	unregisterHotKey    = user32.NewProc("UnregisterHotKey")
 	createMutex         = kernel32.NewProc("CreateMutexW")
 	getLastError        = kernel32.NewProc("GetLastError")
@@ -78,6 +80,8 @@ const (
 	WM_NULL              = 0
 	WM_QUERYENDSESSION   = 0x11
 	WM_HOTKEY            = 0x312
+	WM_TIMER             = 0x113
+	TRAY_CLICK_TIMER     = 0x4C4D
 	HOTKEY_TOGGLE        = 0x4C4B
 	MOD_ALT              = 0x0001
 	VK_Z                 = 0x5A
@@ -177,6 +181,7 @@ var (
 	detailLabel         uintptr
 	detailMode          string
 	hotkeyRegistered    bool
+	pendingTrayClick    bool
 )
 
 func wide(s string) *uint16   { return syscall.StringToUTF16Ptr(s) }
@@ -361,7 +366,9 @@ func startupRegistration(on bool) {
 	const key = `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
 	var cmd *exec.Cmd
 	if on {
-		cmd = exec.Command("reg.exe", "add", key, "/v", "Lakakey", "/t", "REG_SZ", "/d", fmt.Sprintf("\"%s\" --tray", exe), "/f")
+		mode := "--tray"
+		if cfg.ShowAtStartup {mode="--show"}
+		cmd = exec.Command("reg.exe", "add", key, "/v", "Lakakey", "/t", "REG_SZ", "/d", fmt.Sprintf("\"%s\" %s",exe,mode), "/f")
 	} else {
 		cmd = exec.Command("reg.exe", "delete", key, "/v", "Lakakey", "/f")
 	}
@@ -395,7 +402,7 @@ func onCommand(wp uintptr) {
 	case ID_ABOUT:
 		detailMode = "about"
 		cfg.Expanded = true
-		setText(detailLabel, "LAKAKEY  ·  Windows Desktop\r\n\r\nỨng dụng nhập liệu tiếng Việt\r\nPhiên bản 0.10.1\r\n\r\nTác giả: Larx Vo\r\nWebsite: https://vovinhlac.com\r\n\r\nMiễn phí · Hoạt động cục bộ · Không tài khoản")
+		setText(detailLabel, "LAKAKEY  ·  Windows Desktop\r\n\r\nỨng dụng nhập liệu tiếng Việt\r\nPhiên bản 0.11.0\r\n\r\nTác giả: Larx Vo\r\nWebsite: https://vovinhlac.com\r\n\r\nMiễn phí · Hoạt động cục bộ · Không tài khoản")
 		changed = false
 	case ID_GUIDE:
 		detailMode = "guide"
@@ -441,6 +448,7 @@ func onCommand(wp uintptr) {
 		changed = false
 	case ID_SHOWSTART:
 		cfg.ShowAtStartup = checked(id)
+		if cfg.StartWithWindows { startupRegistration(true) }
 	case ID_STARTWIN:
 		cfg.StartWithWindows = checked(id)
 		startupRegistration(cfg.StartWithWindows)
@@ -616,14 +624,20 @@ func windowProc(h, msg, wp, lp uintptr) uintptr {
 			toggleMode()
 		}
 		return 0
+	case WM_TIMER:
+		if wp==TRAY_CLICK_TIMER && pendingTrayClick { pendingTrayClick=false;killTimer.Call(h,TRAY_CLICK_TIMER);toggleMode() }
+		return 0
 	case WM_QUERYENDSESSION:
 		_ = writeSettings(cfg)
 		return 1
 	case TRAY_MESSAGE:
 		switch lp & 0xffff {
 		case WM_LBUTTONUP:
-			toggleMode()
+			pendingTrayClick=true
+			if id,_,_:=setTimer.Call(h,TRAY_CLICK_TIMER,260,0);id==0 {pendingTrayClick=false;toggleMode()}
 		case WM_LBUTTONDBLCLK:
+			pendingTrayClick=false
+			killTimer.Call(h,TRAY_CLICK_TIMER)
 			openSettings()
 		case WM_RBUTTONUP:
 			trayMenu()
@@ -634,6 +648,7 @@ func windowProc(h, msg, wp, lp uintptr) uintptr {
 		user32.NewProc("DestroyWindow").Call(h)
 		return 0
 	case WM_DESTROY:
+		killTimer.Call(h,TRAY_CLICK_TIMER)
 		if hotkeyRegistered {
 			unregisterHotKey.Call(hwnd, HOTKEY_TOGGLE)
 		}
@@ -686,7 +701,7 @@ func main() {
 	if window == 0 {
 		return
 	}
-	if !(len(os.Args) > 1 && strings.EqualFold(os.Args[1], "--tray")) && cfg.ShowAtStartup {
+	if !(len(os.Args) > 1 && strings.EqualFold(os.Args[1], "--tray")) {
 		showWindow.Call(window, SW_SHOW)
 	}
 	var message winMsg
