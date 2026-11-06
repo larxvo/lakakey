@@ -131,6 +131,13 @@ if(WIN32 AND LAKAKEY_BUILD_TSF_V2)
              COMMAND $<TARGET_FILE:LakakeyTsfActivationSmoke> $<TARGET_FILE:LakakeyTsfV2>)
     add_dependencies(lakakey_contract_tests LakakeyTsfActivationSmoke)
   endif()
+  # Interactive synthetic typing probe, allowed ONLY on disposable CI runners.
+  # Not part of CTest or the ordinary user installer; results are reported separately.
+  add_executable(LakakeyTsfLiveTyping tests/windows/tsf_live_typing.cpp)
+  target_link_libraries(LakakeyTsfLiveTyping PRIVATE ole32 uuid user32 advapi32)
+  if(MSVC)
+    target_compile_options(LakakeyTsfLiveTyping PRIVATE /W4 /utf-8)
+  endif()
   # QA only: built with opt-in TSF research target, never in user installer.
   add_executable(LakakeyTsfSmokeHost WIN32 platform/windows/tsf/smoke_host.cpp)
   target_compile_definitions(LakakeyTsfSmokeHost PRIVATE UNICODE _UNICODE)
