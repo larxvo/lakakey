@@ -12,9 +12,10 @@ Add/Remove Programs and installer UI are consistent.
 `assets/windows/lakakey.ico` (16–256 px).
 
 ### Build
-`tools/windows/build_resources.ps1` invokes Windows SDK `rc.exe` and Visual
-Studio `cvtres.exe` to embed the icon and version metadata into
-`desktop/windows/lakakey.syso`. This file is generated, not committed.
+`tools/windows/build_resources.ps1` invokes a pinned `rsrc` Go resource
+compiler to embed the ICO into `desktop/windows/lakakey.syso`, which the
+Go linker includes in `LakakeyDesktop.exe`. This file is generated, not
+committed. The Inno Setup compiler also embeds the ICO into the Setup EXE.
 
 The Windows workflow builds `LakakeyDesktop.exe`, installs Inno Setup 6,
 compiles `installer/Lakakey.iss`, and emits:
