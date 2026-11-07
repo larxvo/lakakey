@@ -169,7 +169,7 @@ jobs:
         shell: pwsh
         run: |
           git archive --format=zip -o Lakakey-0.14.1-Source.zip HEAD
-          if ($LASTEXITCODE -ne 0 -or !(Test-Path Lakakey-0.14-Source.zip)) {
+          if ($LASTEXITCODE -ne 0 -or !(Test-Path Lakakey-0.14.1-Source.zip)) {
             throw 'Source archive generation failed'
           }
       - name: Upload source revision
