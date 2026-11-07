@@ -1,10 +1,10 @@
-name: Lakakey 0.14 — TSF atomic text commits and input compatibility checks
+name: Lakakey 0.14.1 — Branded Windows installer, TSF and compatibility checks
 on:
   push:
-    branches: [main, feature/tsf-native-edit-session, feature/lakakey-0.12-native-input, feature/lakakey-0.13-windows-compat, feature/lakakey-0.14-input-compat]
-    paths: ['desktop/**','include/**','src/**','tests/**','platform/windows/tsf/**','CMakeLists.txt','go.mod','.github/workflows/windows-desktop-beta.yml']
+    branches: [main, feature/tsf-native-edit-session, feature/lakakey-0.12-native-input, feature/lakakey-0.13-windows-compat, feature/lakakey-0.14-input-compat, feature/lakakey-0.14-installer-branding]
+    paths: ['desktop/**','include/**','src/**','tests/**','platform/windows/tsf/**','CMakeLists.txt','go.mod','installer/**','assets/windows/**','tools/**','ui/assets/brand_3d_reference.png','.github/workflows/windows-desktop-beta.yml']
   pull_request:
-    paths: ['desktop/**','include/**','src/**','tests/**','platform/windows/tsf/**','CMakeLists.txt','go.mod','.github/workflows/windows-desktop-beta.yml']
+    paths: ['desktop/**','include/**','src/**','tests/**','platform/windows/tsf/**','CMakeLists.txt','go.mod','installer/**','assets/windows/**','tools/**','ui/assets/brand_3d_reference.png','.github/workflows/windows-desktop-beta.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -36,6 +36,20 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate official icon and Go executable resources
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check Pillow==11.3.0 pefile==2024.8.26
+          if ($LASTEXITCODE -ne 0) { throw 'Icon tools could not be installed' }
+          python tools/build_icon.py
+          if ($LASTEXITCODE -ne 0) { throw 'Lakakey icon generation failed' }
+          & ./tools/windows/build_resources.ps1
+          if ($LASTEXITCODE -ne 0 -or !(Test-Path 'desktop/windows/lakakey.syso')) {
+            throw 'Go Windows icon resource generation failed'
+          }
       - name: Validate configuration on Windows
         shell: pwsh
         run: go test -count=1 ./desktop/windows
@@ -55,17 +69,29 @@ jobs:
           $dll = (Resolve-Path 'build-win/Release/LakakeyTsfV2.dll').Path
           & $smoke $dll '--ephemeral-runner'
           if ($LASTEXITCODE -ne 0) { throw 'TSF profile registration test failed; no user release allowed' }
-      - name: Compile Windows app and per-user setup
+      - name: Compile icon-branded Windows desktop application
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force desktop/installer/payload | Out-Null
           go build -trimpath -ldflags '-s -w -H=windowsgui' -o desktop/installer/payload/LakakeyDesktop.exe ./desktop/windows
-          if ($LASTEXITCODE -ne 0) { throw 'Desktop build failed' }
-          go build -trimpath -ldflags '-s -w -H=windowsgui' -o LakakeyDesktopSetup.exe ./desktop/installer
-          if ($LASTEXITCODE -ne 0) { throw 'Setup build failed' }
-          if ((Get-Item LakakeyDesktopSetup.exe).Length -lt 200000) { throw 'Invalid setup size' }
-          Get-FileHash LakakeyDesktopSetup.exe -Algorithm SHA256
-          Get-FileHash desktop/installer/payload/LakakeyDesktop.exe -Algorithm SHA256
+          if ($LASTEXITCODE -ne 0) { throw 'Branded desktop build failed' }
+          python tools/windows/verify_embedded_icon.py desktop/installer/payload/LakakeyDesktop.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Desktop icon is missing from the EXE' }
+      - name: Build interactive Lakakey Windows Setup wizard
+        shell: pwsh
+        run: |
+          choco install innosetup --yes --no-progress --limit-output
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup installation failed' }
+          $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'
+          if (!(Test-Path $iscc)) { throw 'ISCC.exe not found' }
+          & $iscc '/Qp' 'installer/Lakakey.iss'
+          if ($LASTEXITCODE -ne 0) { throw 'Lakakey interactive setup compilation failed' }
+          $setup = 'dist/windows/Lakakey-Setup-0.14.1-Windows-x64.exe'
+          if (!(Test-Path $setup)) { throw 'Branded setup EXE not generated' }
+          python tools/windows/verify_embedded_icon.py $setup
+          if ($LASTEXITCODE -ne 0) { throw 'Setup icon resource missing from the installer EXE' }
+          if ((Get-Item $setup).Length -lt 300000) { throw 'Setup EXE is unexpectedly small' }
+          Get-FileHash $setup -Algorithm SHA256
       - name: Smoke-test desktop mode publication (not text input)
         shell: pwsh
         run: |
@@ -88,11 +114,27 @@ jobs:
             Start-Process -FilePath $exe -ArgumentList '--quit' -Wait
             $app.WaitForExit(3000) | Out-Null
           }
+      - name: Test installer and uninstaller on disposable Windows runner
+        shell: pwsh
+        run: |
+          $setup = (Resolve-Path 'dist/windows/Lakakey-Setup-0.14.1-Windows-x64.exe').Path
+          $install = Start-Process -FilePath $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-' -PassThru -Wait
+          if ($install.ExitCode -ne 0) { throw "Installer failed: $($install.ExitCode)" }
+          $location = Join-Path $env:LOCALAPPDATA 'Programs/Lakakey'
+          $app = Join-Path $location 'LakakeyDesktop.exe'
+          if (!(Test-Path $app)) { throw 'Lakakey app was not installed' }
+          python tools/windows/verify_embedded_icon.py $app
+          if ($LASTEXITCODE -ne 0) { throw 'Installed app icon is missing' }
+          $uninstall = Join-Path $location 'unins000.exe'
+          if (!(Test-Path $uninstall)) { throw 'Uninstaller was not registered' }
+          $uninst = Start-Process -FilePath $uninstall -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -PassThru -Wait
+          if ($uninst.ExitCode -ne 0) { throw "Uninstaller failed: $($uninst.ExitCode)" }
+          if (Test-Path $app) { throw 'Uninstall left the Lakakey application behind' }
       - name: Generate checksums and build identity
         shell: pwsh
         run: |
           $files = @(
-            'LakakeyDesktopSetup.exe',
+            'dist/windows/Lakakey-Setup-0.14.1-Windows-x64.exe',
             'desktop/installer/payload/LakakeyDesktop.exe'
           )
           $hashLines = foreach ($f in $files) {
@@ -102,10 +144,10 @@ jobs:
           $hashLines | Set-Content -LiteralPath SHA256SUMS.txt -Encoding utf8
           $info = [ordered]@{
             product = 'Lakakey'
-            version = '0.14.0'
+            version = '0.14.1'
             git_commit = $env:GITHUB_SHA
             target = 'windows-amd64'
-            artifact = 'desktop-controller-only'
+            artifact = 'icon-branded-interactive-desktop-installer'
             tsf_installed = $false
             publisher = 'Larx Vo'
           }
@@ -113,11 +155,12 @@ jobs:
       - name: Upload runnable desktop-only beta
         uses: actions/upload-artifact@v4
         with:
-          name: Lakakey-0.14-Windows-x64-Dev
+          name: Lakakey-0.14.1-OneClick-Windows-x64
           if-no-files-found: error
           retention-days: 30
           path: |
-            LakakeyDesktopSetup.exe
+            dist/windows/Lakakey-Setup-0.14.1-Windows-x64.exe
+            assets/windows/lakakey.ico
             desktop/installer/payload/LakakeyDesktop.exe
             desktop/installer/payload/README.txt
             SHA256SUMS.txt
@@ -125,14 +168,14 @@ jobs:
       - name: Archive current source revision
         shell: pwsh
         run: |
-          git archive --format=zip -o Lakakey-0.14-Source.zip HEAD
+          git archive --format=zip -o Lakakey-0.14.1-Source.zip HEAD
           if ($LASTEXITCODE -ne 0 -or !(Test-Path Lakakey-0.14-Source.zip)) {
             throw 'Source archive generation failed'
           }
       - name: Upload source revision
         uses: actions/upload-artifact@v4
         with:
-          name: Lakakey-0.14-Complete-Source
+          name: Lakakey-0.14.1-Complete-Source
           if-no-files-found: error
           retention-days: 30
           path: Lakakey-0.14-Source.zip
