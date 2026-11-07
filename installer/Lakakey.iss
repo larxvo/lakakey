@@ -44,7 +44,6 @@ VersionInfoCopyright=Copyright (C) 2026 Larx Vo
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
-Name: "vietnamese"; MessagesFile: "compiler:Languages\Vietnamese.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional tasks:"; Flags: unchecked
