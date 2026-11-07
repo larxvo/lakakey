@@ -1,3 +1,7 @@
+// Reserved version-info resource definition for future signed Windows builds.
+// The 0.14.1 Go executable icon is embedded with tools/windows/build_resources.ps1
+// via pinned rsrc; this .rc file is not compiled by the current pipeline.
+
 // Lakakey Desktop native Windows resources — icon + version.
 // Generated .syso is placed beside Go package sources by the Windows build.
 
