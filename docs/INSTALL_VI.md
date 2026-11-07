@@ -1,41 +1,42 @@
-# Hướng dẫn cài Lakakey 0.14 — Windows x64
+# Cài đặt Lakakey 0.14.1 trên Windows
 
-**Tác giả:** Larx Vo · https://vovinhlac.com
+Lakakey dùng **một tệp cài đặt EXE có icon thương hiệu**. Không cần giải nén
+một thư mục source để chạy chương trình.
 
-## Tải bộ cài
+## Cài đặt
 
-Mở [Windows CI Lakakey](https://github.com/larxvo/lakakey/actions/workflows/windows-desktop-beta.yml),
-chọn một lần chạy **Success** của nhánh 0.14, rồi tải artifact
-`Lakakey-0.14-Windows-x64-Dev`. Giải nén và chạy
-`LakakeyDesktopSetup.exe`. Nếu có gói cài trực tiếp được chia sẻ trong
-cuộc trò chuyện này, hãy kiểm tra SHA-256 đi kèm để đối chiếu.
+1. Tải **Lakakey-Setup-0.14.1-Windows-x64.exe** từ gói Windows CI được đánh
+   dấu **Success** trên [GitHub Actions](https://github.com/larxvo/lakakey/actions/workflows/windows-desktop-beta.yml)
+   hoặc đường dẫn EXE do dự án cung cấp. Khi tải artifact từ GitHub Actions,
+   phải giải nén artifact ZIP **một lần** để lấy file EXE bên trong; chính file
+   EXE là trình cài đặt duy nhất.
+2. Xác minh nguồn tệp và SHA-256 trong `SHA256SUMS.txt`.
+3. Nhấp đúp **Lakakey-Setup-0.14.1-Windows-x64.exe** có icon Lakakey.
+4. Làm theo cửa sổ cài đặt Windows (Inno Setup). Chọn tạo shortcut Desktop
+   nếu muốn; mặc định có shortcut Start Menu.
+5. Ở trang cuối, chọn **Launch Lakakey** nếu muốn mở Settings sau khi cài.
+   Sau đó Lakakey có thể chạy nền ở system tray.
 
-Bộ cài cài ứng dụng Settings/tray cho tài khoản Windows hiện tại.
-Không yêu cầu đăng nhập và không hiển thị các popup thông tin lặp lại.
-Mục **Trạng thái native** trong Settings cho biết liệu hồ sơ thử nghiệm
-được đăng ký hay chưa; chưa chứng minh việc nhập tiếng Việt trong ứng dụng.
+Ứng dụng mặc định được cài cho **tài khoản Windows hiện tại**; không yêu cầu
+quyền Administrator. Có thể gỡ trong **Settings → Apps → Installed apps**.
 
-## Gỡ cài đặt
+## Biểu tượng
 
-Vào Windows Settings → Apps → Installed apps → Lakakey Desktop →
-Uninstall. Thao tác này không cần chỉnh sửa các chương trình gõ khác.
+Logo chữ **L kèm dấu chân màu trắng trên nền xanh** được lấy từ tài sản brand
+có sẵn tại `ui/assets/brand_3d_reference.png`, chuyển thành ICO nhiều kích
+thước rồi nhúng trực tiếp vào cả `LakakeyDesktop.exe` và tệp Setup EXE.
+Không phụ thuộc một tệp ICO rời để Windows Explorer hiển thị icon.
 
-## An toàn và trạng thái sản phẩm
+## Trạng thái kỹ thuật
 
-Đây là bản **phát triển chưa ký số**, chưa được xác minh hoàn chỉnh trên
-Windows 10/11. Chỉ chạy tệp có nguồn gốc rõ ràng và không cố bỏ qua cảnh báo
-bảo mật của hệ điều hành nếu chưa xác nhận được nhà phát hành. Không cài đặt
-DLL TSF trong gói nghiên cứu lên máy dùng hằng ngày.
+Bộ cài Lakakey 0.14.1 chỉ cài **Settings và system tray**. Nó không tự cài
+hoặc đăng ký thành phần TSF thử nghiệm. Việc gõ tiếng Việt toàn hệ thống
+trong Word, Chrome, Notepad và VS Code vẫn cần kiểm chứng riêng.
 
-Bộ cài này **chưa kích hoạt khả năng gõ tiếng Việt toàn hệ thống**.
-TSF đang được kiểm thử trong môi trường tách biệt. Xem
-[tiêu chí kiểm thử 0.14](ATOMIC-INPUT-0.14.md) để biết các điều kiện trước khi
-phát hành đầy đủ.
+Tệp cài đặt thử nghiệm chưa ký số. Không bỏ qua cảnh báo Windows chỉ để
+cài một tệp không xác minh được nguồn gốc.
 
-## Gửi báo cáo lỗi
+Không có popup quảng bá hoặc thông báo so sánh phần mềm khác.
+Dữ liệu đã gõ không được ghi lại hay tải lên server.
 
-Mở [GitHub Issues](https://github.com/larxvo/lakakey/issues),
-ghi rõ Windows version, cách tái hiện lỗi và kết quả mong muốn. Không
-đính kèm mật khẩu, văn bản nhạy cảm hoặc lịch sử phím đã gõ.
-
-© 2026 Larx Vo — https://vovinhlac.com
+© 2026 Larx Vo · https://vovinhlac.com.

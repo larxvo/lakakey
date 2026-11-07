@@ -1,7 +1,7 @@
-Lakakey 0.14.0 — Windows Desktop development build
+Lakakey 0.14.1 — Windows Desktop development build
 Created by Larx Vo · https://vovinhlac.com
 
-Install: launch LakakeyDesktopSetup.exe.
+Install: double-click Lakakey-Setup-0.14.1-Windows-x64.exe and follow the Windows setup wizard.
 Launch: Start Menu > Lakakey.
 Close: hides Settings to the system tray.
 Tray: single click changes desktop VN/EN preference; double click opens Settings.
