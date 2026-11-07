@@ -4,11 +4,26 @@
 
 Created by **Larx Vo** · [vovinhlac.com](https://vovinhlac.com) · Copyright © 2026.
 
-## Development status — 0.14 Atomic Input Transactions
+## Development status — 0.14.1 Branded Windows Installer
 
 Lakakey is under active development. Its portable C++ engine includes baseline Telex/VNI support, Unicode handling and unit tests. A native Windows desktop app provides Settings, system tray, hotkeys and local preferences. A Windows Text Services Framework (TSF) implementation is being tested separately.
 
 **The current Windows desktop installer does not activate system-wide Vietnamese input.** The native TSF DLL is experimental and is not installed by the public desktop setup. Compatibility with Notepad, Office, browsers and development editors remains a release gate, not a completed claim.
+
+## Windows installation — branded one-click EXE
+
+The Windows installer patch produces **Lakakey-Setup-0.14.1-Windows-x64.exe**.
+It has the official Lakakey **L + paw** Windows icon embedded in the file.
+Double-click the EXE to open a modern installer wizard, install Lakakey
+for the current Windows user, and optionally launch it afterwards. A Start Menu
+shortcut is created; the Desktop shortcut is optional. Uninstall from
+Windows **Installed apps**. The main LakakeyDesktop.exe also contains
+the same icon, so Explorer displays proper brand imagery.
+
+The installer is unsigned and **does not install the experimental TSF service**.
+Native system-wide typing is still in development. Read
+[installation instructions](docs/INSTALL_VI.md) and
+[installer technical notes](docs/BRANDED-SETUP-0.14.1.md).
 
 ## What's in 0.14
 
