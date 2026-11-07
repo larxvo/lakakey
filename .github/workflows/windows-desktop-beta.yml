@@ -178,7 +178,7 @@ jobs:
           name: Lakakey-0.14.1-Complete-Source
           if-no-files-found: error
           retention-days: 30
-          path: Lakakey-0.14-Source.zip
+          path: Lakakey-0.14.1-Source.zip
       - name: Upload research-only TSF DLL separately
         uses: actions/upload-artifact@v4
         with:
