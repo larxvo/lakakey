@@ -23,9 +23,16 @@ def verify(path: Path) -> None:
     groups = {item.id for item in pe.DIRECTORY_ENTRY_RESOURCE.entries}
     if ICON not in groups or GROUP_ICON not in groups:
         raise AssertionError(f"{path.name}: missing RT_ICON or RT_GROUP_ICON resource")
-    if pe.FILE_HEADER.Machine != 0x8664:
-        raise AssertionError(f"{path.name}: expected Windows x64 PE")
-    print(f"PASS: {path.name} — x64 executable with embedded Lakakey icon")
+    # Inno Setup uses a 32-bit bootstrap executable by default, even when
+    # its installed application and payload are Windows x64. Both can carry
+    # the official icon resource. Only the desktop program must be PE x64.
+    machine = pe.FILE_HEADER.Machine
+    if machine not in (0x14C, 0x8664):
+        raise AssertionError(f"{path.name}: invalid Windows PE architecture {machine:#x}")
+    if path.name.lower() == "lakakeydesktop.exe" and machine != 0x8664:
+        raise AssertionError(f"{path.name}: desktop application is not x64")
+    architecture = "x64" if machine == 0x8664 else "x86 setup bootstrapper"
+    print(f"PASS: {path.name} — {architecture}, embedded Lakakey icon")
 
 def main() -> None:
     cli = argparse.ArgumentParser()
