@@ -26,7 +26,7 @@ func nativeStatusText() string {
     if experimentalTSFRegistered() {
         registered = "Đã đăng ký thử nghiệm (chưa xác minh đang hoạt động)"
     }
-    return "LAKAKEY 0.14  ·  CHẨN ĐOÁN\r\n\r\n" +
+    return "LAKAKEY 0.14.1  ·  CHẨN ĐOÁN\r\n\r\n" +
         "Ứng dụng cài đặt: Đang chạy\r\n" +
         "Hồ sơ Windows TSF: " + registered + "\r\n\r\n" +
         "Trạng thái VN/EN ở đây là cấu hình ứng dụng.\r\n" +
